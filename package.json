@@ -1,0 +1,36 @@
+{
+  "name": "whattheagent",
+  "version": "0.1.0",
+  "description": "Local-first capability discovery and governance CLI for AI agent workspaces.",
+  "type": "module",
+  "bin": {
+    "whattheagent": "./dist/cli.js",
+    "wta": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "scan:example": "tsx src/cli.ts scan examples/risky-agent",
+    "graph:example": "tsx src/cli.ts graph examples/risky-agent",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "glob": "^13.0.6",
+    "gray-matter": "^4.0.3",
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
