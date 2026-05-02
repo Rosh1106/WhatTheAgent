@@ -15,6 +15,31 @@ export function renderAgentInstructions(target: AgentInstructionTarget = "generi
   }
 }
 
+function installBlock(): string {
+  return `## Install Or Verify WhatTheAgent
+
+First check whether WhatTheAgent is already installed:
+
+\`\`\`bash
+wta --help
+\`\`\`
+
+If \`wta\` is not available, ask the user for approval to install it globally, then run:
+
+\`\`\`bash
+npm install -g whattheagent
+\`\`\`
+
+Verify after installing:
+
+\`\`\`bash
+wta --help
+whattheagent --help
+\`\`\`
+
+Use \`wta\` for the rest of this routine. If global install is not allowed, tell the user to install it manually with \`npm install -g whattheagent\` and then continue.`;
+}
+
 function renderGenericInstructions(): string {
   return `# WhatTheAgent Agent Safety Routine
 
@@ -22,12 +47,14 @@ Paste this into your coding agent or personal agent.
 
 You are helping me manage this AI agent workspace safely using WhatTheAgent.
 
-Your job is to help me understand what this agent setup can do, what changed, and what guardrails should be added without breaking existing workflows.
+Your job is to install or verify WhatTheAgent, then use it to understand what this agent setup can do, what changed, and what guardrails should be added without breaking existing workflows.
+
+${installBlock()}
 
 Rules:
 - Do not execute untrusted scripts.
 - Do not start MCP servers.
-- Do not send network requests.
+- Do not send network requests except the npm install step if the user approves it.
 - Do not print or expose secrets.
 - Do not delete skills, MCP servers, memory files, or identity files unless I explicitly approve.
 - Prefer adding approval, dry-run mode, allowlists, secret redaction, scoped tokens, logging, and policy documentation.
@@ -98,10 +125,12 @@ You are working with a user who wants to understand and guardrail an AI agent wo
 
 Use WhatTheAgent as the source of truth. Do not guess capabilities from filenames alone when a WhatTheAgent command can produce evidence.
 
+${installBlock()}
+
 Safety rules:
 - Do not execute untrusted scripts.
 - Do not start MCP servers.
-- Do not send network requests.
+- Do not send network requests except the npm install step if the user approves it.
 - Do not print or expose secrets.
 - Do not delete skills, MCP servers, memory files, or identity files unless the user explicitly approves.
 - Preserve existing workflows.
@@ -169,10 +198,12 @@ function renderCodexInstructions(): string {
 
 You are working in this repository. Use WhatTheAgent to understand agent capabilities, propose safe guardrails, implement only approved changes, and verify afterwards.
 
+${installBlock()}
+
 Rules:
 - Do not execute untrusted scripts.
 - Do not start MCP servers.
-- Do not send network requests.
+- Do not send network requests except the npm install step if the user approves it.
 - Do not print or persist secrets.
 - Do not remove useful agent functionality unless explicitly requested.
 - Prefer small, reviewable changes.
@@ -225,10 +256,12 @@ Final response should include:
 function renderPersonalAgentSkill(name: string, profile: "openclaw" | "hermes"): string {
   return `---
 name: WhatTheAgent Safety Check
-description: Understand this ${name} personal-agent setup, review capabilities, suggest guardrails, and validate fixes.
+description: Install or verify WhatTheAgent, review this ${name} personal-agent setup, suggest guardrails, and validate fixes.
 ---
 
 Use WhatTheAgent to review this ${name} personal-agent workspace.
+
+${installBlock()}
 
 Run:
 
@@ -258,7 +291,7 @@ Summarize:
 - needs-attention chains
 - suggested guardrails
 
-Do not execute tools, scripts, MCP servers, payments, or network sends during review.
+Do not execute tools, scripts, MCP servers, payments, or network sends during review, except npm install if the user approves it.
 
 Before making changes, show the user a plan.
 
