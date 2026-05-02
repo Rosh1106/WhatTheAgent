@@ -15,6 +15,20 @@ Personal-agent users care about identity, skills, memory, tools, scripts, secret
 
 Workspace-station users care about repo-local agent configs, MCP servers, scripts, CI workflows, policy files, and pull request changes.
 
+## Install
+
+WhatTheAgent is published on npm:
+
+```bash
+npm install -g whattheagent
+```
+
+Then run:
+
+```bash
+wta understand . --output .wta
+```
+
 ## Pick Your Path
 
 | I am using... | Start here | What you get |
@@ -23,6 +37,7 @@ Workspace-station users care about repo-local agent configs, MCP servers, script
 | Codex, Claude Code, Cursor, Kiro, Windsurf, VS Code, team repos | [Workspace Stations](./workspace-stations.md) | A repo/workspace capability report plus fix plans for coding agents |
 | I want to paste a safety routine into my agent | [Agent Instructions](./agent-instructions.md) | Copy-paste instructions and skill-style prompts for Claude, Codex, OpenClaw, and Hermes |
 | I want to know what clients and files are checked | [Compatibility](./compatibility.md) | Known agent clients, MCP config paths, and skills paths |
+| I want CI reports for agent capability changes | [GitHub Actions](../docs/github-action.md) | A workflow that uploads `.wta` reports and agent instructions |
 
 ## Core Product Loop
 
