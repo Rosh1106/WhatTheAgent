@@ -1,0 +1,28 @@
+name: WhatTheAgent
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  whattheagent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install WhatTheAgent
+        run: npm install -g whattheagent
+      - name: Understand agent workspace
+        run: wta understand . --output .wta --json --no-color
+      - name: Generate Codex instructions
+        run: wta instructions --for-codex --output .wta/codex-instructions.md
+      - name: Upload WhatTheAgent report
+        uses: actions/upload-artifact@v4
+        with:
+          name: whattheagent-report
+          path: .wta/
