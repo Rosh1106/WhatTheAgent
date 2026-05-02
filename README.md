@@ -26,7 +26,13 @@ WhatTheAgent verifies.
 
 ## Quick Start
 
-Install the CLI from source for now:
+After npm publishing:
+
+```bash
+npm install -g whattheagent
+```
+
+Until the package is published, install from source:
 
 ```bash
 git clone https://github.com/Rosh1106/WhatTheAgent.git
@@ -53,12 +59,6 @@ Ask your coding agent for a safe implementation plan:
 ```bash
 wta plan . --for-codex
 wta plan . --for-claude
-```
-
-After npm publishing, install will become:
-
-```bash
-npm install -g whattheagent
 ```
 
 ## Paste Into Your Agent
@@ -98,6 +98,15 @@ skills/whattheagent-safety-check.skill.md
 
 ## Install
 
+### Global npm install
+
+Once published:
+
+```bash
+npm install -g whattheagent
+wta --help
+```
+
 ### From source
 
 ```bash
@@ -124,19 +133,49 @@ npm run dev -- scan examples/risky-agent
 npm run dev -- instructions --for-claude
 ```
 
-### Future npm install
-
-After publishing:
-
-```bash
-npm install -g whattheagent
-```
-
 Both binaries work after linking or global install:
 
 ```bash
 whattheagent scan .
 wta scan .
+```
+
+## GitHub Actions
+
+Run WhatTheAgent in CI and upload the local `.wta` report:
+
+```yaml
+name: WhatTheAgent
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  whattheagent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install -g whattheagent
+      - run: wta understand . --output .wta --json --no-color
+      - run: wta instructions --for-codex --output .wta/codex-instructions.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: whattheagent-report
+          path: .wta/
+```
+
+Until the package is published, use the source checkout workflow in [GitHub Actions docs](docs/github-action.md).
+
+A reusable example lives at:
+
+```text
+examples/github-action/whattheagent.yml
 ```
 
 ## Commands
