@@ -17,14 +17,10 @@ inputs:
     description: Workspace profile: workspace, personal-agent, openclaw, or hermes.
     required: false
     default: workspace
-  install-command:
-    description: Command used to install dependencies before building this action checkout.
+  version:
+    description: WhatTheAgent npm version to install.
     required: false
-    default: npm ci
-  build-command:
-    description: Command used to build the CLI before running it.
-    required: false
-    default: npm run build
+    default: latest
   generate-instructions:
     description: Whether to generate Codex instructions into the output directory.
     required: false
@@ -33,19 +29,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install WhatTheAgent dependencies
+    - name: Install WhatTheAgent
       shell: bash
-      run: ${{ inputs.install-command }}
-
-    - name: Build WhatTheAgent
-      shell: bash
-      run: ${{ inputs.build-command }}
+      run: npm install -g "whattheagent@${{ inputs.version }}" --ignore-scripts
 
     - name: Understand agent workspace
       shell: bash
-      run: node dist/cli.js understand "${{ inputs.workspace }}" --profile "${{ inputs.profile }}" --output "${{ inputs.output-dir }}" --json --no-color
+      run: wta understand "${{ inputs.workspace }}" --profile "${{ inputs.profile }}" --output "${{ inputs.output-dir }}" --json --no-color
 
     - name: Generate Codex instructions
       if: ${{ inputs.generate-instructions == 'true' }}
       shell: bash
-      run: node dist/cli.js instructions --for-codex --output "${{ inputs.output-dir }}/codex-instructions.md"
+      run: wta instructions --for-codex --output "${{ inputs.output-dir }}/codex-instructions.md"
