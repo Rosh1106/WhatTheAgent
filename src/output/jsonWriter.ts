@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { CapabilityGraph, ScanResult } from "../core/types.js";
+import type { CapabilityGraph, ScanResult, UnderstandResult } from "../core/types.js";
+import { renderFixPlan } from "./fixPlan.js";
+import { renderHtmlReport } from "./htmlReport.js";
 import { renderMarkdownReport } from "./markdownReport.js";
 
 export function stableJson(value: unknown): string {
@@ -23,6 +25,31 @@ export async function writeScanOutputs(outputFile: string, scan: ScanResult): Pr
   await fs.writeFile(reportFile, renderMarkdownReport(scan), "utf8");
 
   return [scanFile, graphFile, reportFile];
+}
+
+export async function writeUnderstandOutputs(outputDir: string, result: UnderstandResult): Promise<string[]> {
+  const resolvedDir = path.resolve(outputDir);
+  const understandFile = path.join(resolvedDir, "understand.json");
+  const graphFile = path.join(resolvedDir, "capability-graph.json");
+  const fixPlanFile = path.join(resolvedDir, "fix-plan.md");
+  const htmlFile = path.join(resolvedDir, "report.html");
+  const agentContextFile = path.join(resolvedDir, "agent-context.json");
+
+  await fs.mkdir(resolvedDir, { recursive: true });
+  await writeJsonFile(understandFile, result);
+  await writeJsonFile(graphFile, result.graph satisfies CapabilityGraph);
+  await writeJsonFile(agentContextFile, {
+    schemaVersion: result.schemaVersion,
+    workspace: result.workspace,
+    controlGaps: result.controlGaps,
+    quickFixes: result.quickFixes,
+    implementationTasks: result.implementationTasks,
+    riskChains: result.riskChains
+  });
+  await fs.writeFile(fixPlanFile, renderFixPlan(result), "utf8");
+  await fs.writeFile(htmlFile, renderHtmlReport(result), "utf8");
+
+  return [understandFile, graphFile, fixPlanFile, htmlFile, agentContextFile];
 }
 
 function stripJsonExtension(filePath: string): string {

@@ -61,12 +61,16 @@ export function buildGraph(rootLabel: string, components: Component[], findings:
 }
 
 function componentNode(component: Component): GraphNode {
+  const metadata = component.type === "mcp_server"
+    ? { ...component.metadata, subtype: "mcp_server" }
+    : component.metadata;
+
   return {
     id: component.id,
     type: componentTypeToNodeType(component.type),
     label: component.label,
     path: component.path,
-    metadata: component.metadata
+    metadata
   };
 }
 
@@ -75,7 +79,7 @@ function componentTypeToNodeType(type: Component["type"]): GraphNode["type"] {
     case "skill":
       return "Skill";
     case "mcp_server":
-      return "MCPServer";
+      return "ToolServer";
     case "script":
       return "Script";
     case "env_var":

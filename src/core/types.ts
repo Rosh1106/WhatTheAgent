@@ -90,20 +90,42 @@ export interface RiskChain {
 
 export type GraphNodeType =
   | "Workspace"
+  | "Agent"
   | "Skill"
-  | "MCPServer"
+  | "Prompt"
+  | "Rule"
+  | "ToolServer"
   | "Script"
+  | "Config"
+  | "Secret"
+  | "ExternalService"
+  | "Database"
+  | "ScheduledTask"
+  | "CIWorkflow"
   | "EnvVar"
   | "APIEndpoint"
   | "Capability"
-  | "RiskChain";
+  | "Control"
+  | "ControlGap"
+  | "RiskChain"
+  | "QuickFix"
+  | "ImplementationTask";
 
 export type GraphEdgeType =
   | "CONTAINS"
   | "USES"
   | "CALLS"
+  | "READS"
+  | "WRITES"
+  | "SENDS_TO"
+  | "ACCESSES"
   | "HAS_CAPABILITY"
   | "HAS_RISK_CHAIN"
+  | "PROTECTED_BY"
+  | "MISSING_CONTROL"
+  | "PART_OF_RISK_CHAIN"
+  | "CAN_BE_FIXED_BY"
+  | "IMPLEMENTED_BY"
   | "DEFINED_IN";
 
 export interface GraphNode {
@@ -146,6 +168,199 @@ export interface ScanResult {
 
 export interface ScanOptions {
   allowMcpExec?: boolean;
+}
+
+export type CapabilityState =
+  | "declared"
+  | "inferred"
+  | "sandbox_confirmed"
+  | "sandbox_blocked"
+  | "not_tested"
+  | "unknown";
+
+export type ControlType =
+  | "human_approval"
+  | "command_allowlist"
+  | "external_domain_allowlist"
+  | "secret_redaction"
+  | "secret_scoping"
+  | "read_only_filesystem"
+  | "network_restriction"
+  | "sandbox_enabled"
+  | "ci_gate"
+  | "audit_logging"
+  | "policy_file"
+  | "least_privilege_token"
+  | "delegation_policy"
+  | "payment_approval";
+
+export type FixKind = "safe_autofix" | "guided_fix" | "agent_implementation_task";
+
+export interface NormalizedCapability {
+  capability: Capability;
+  state: CapabilityState;
+  count: number;
+  risk: RiskLevel;
+  evidence: Evidence[];
+}
+
+export interface AgentSurface {
+  id: string;
+  type: "skill" | "script" | "tool_server" | "config";
+  subtype?: string;
+  label: string;
+  path?: string;
+  capabilities: Capability[];
+  controls: ControlType[];
+  controlGaps: string[];
+  riskChains: string[];
+}
+
+export interface ToolServer {
+  id: string;
+  type: "ToolServer";
+  subtype: "mcp_server";
+  label: string;
+  path?: string;
+  command?: string;
+  args: string[];
+  transport?: string;
+  envVars: string[];
+  capabilities: Capability[];
+  controls: ControlType[];
+  controlGaps: string[];
+  riskChains: string[];
+}
+
+export interface Control {
+  id: string;
+  type: ControlType;
+  label: string;
+  status: "detected" | "missing" | "unknown";
+  componentId?: string;
+  evidence?: Evidence;
+}
+
+export interface ControlGap {
+  id: string;
+  control: ControlType;
+  componentId: string;
+  risk: RiskLevel;
+  message: string;
+  evidence: Evidence[];
+}
+
+export interface QuickFix {
+  id: string;
+  kind: FixKind;
+  title: string;
+  componentId?: string;
+  risk: RiskLevel;
+  rationale: string;
+  steps: string[];
+  controlGaps: string[];
+}
+
+export interface ImplementationTask {
+  id: string;
+  title: string;
+  priority: RiskLevel;
+  targetFiles: string[];
+  instructions: string;
+  acceptanceCriteria: string[];
+  relatedQuickFixes: string[];
+}
+
+export interface SetupInventory {
+  workspaceRoot: string;
+  surfaces: AgentSurface[];
+  toolServers: ToolServer[];
+  counts: {
+    skills: number;
+    scripts: number;
+    toolServers: number;
+    findings: number;
+    riskChains: number;
+  };
+}
+
+export interface UnderstandResult {
+  schemaVersion: "0.1";
+  workspace: {
+    root: string;
+  };
+  inventory: SetupInventory;
+  capabilities: NormalizedCapability[];
+  controls: Control[];
+  controlGaps: ControlGap[];
+  riskChains: RiskChain[];
+  quickFixes: QuickFix[];
+  implementationTasks: ImplementationTask[];
+  graph: CapabilityGraph;
+  scan: ScanResult;
+  summary: {
+    capabilityCount: number;
+    controlGapCount: number;
+    quickFixCount: number;
+    implementationTaskCount: number;
+    criticalRiskChains: number;
+    highRiskChains: number;
+  };
+}
+
+export type AgentPlanTarget = "generic" | "codex" | "claude";
+
+export interface AgentPlan {
+  schemaVersion: "0.1";
+  target: AgentPlanTarget;
+  generatedFrom: "understand";
+  workspace: {
+    root: string;
+  };
+  summary: UnderstandResult["summary"];
+  tasks: ImplementationTask[];
+  instructions: string;
+  acceptanceCriteria: string[];
+}
+
+export type ProbeStatus = "not_run" | "sandbox_confirmed" | "sandbox_blocked" | "skipped";
+
+export interface SandboxProbe {
+  id: string;
+  capability: Capability;
+  status: ProbeStatus;
+  safe: boolean;
+  description: string;
+  commandPreview?: string;
+  expectedControl?: ControlType;
+}
+
+export interface ProbePlan {
+  schemaVersion: "0.1";
+  workspace: {
+    root: string;
+  };
+  mode: "plan_only";
+  probes: SandboxProbe[];
+  warning: string;
+}
+
+export type RuntimeMode = "observe" | "warn" | "approval" | "enforce";
+
+export interface RuntimePlan {
+  schemaVersion: "0.1";
+  workspace: {
+    root: string;
+  };
+  mode: RuntimeMode;
+  status: "preview_only";
+  policies: Array<{
+    id: string;
+    control: ControlType;
+    action: "observe" | "warn" | "require_approval" | "block";
+    appliesTo: string[];
+  }>;
+  warning: string;
 }
 
 export interface DiffResult {

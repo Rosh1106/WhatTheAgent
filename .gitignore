@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.wta/
 *.log
 .DS_Store
 whattheagent.json
