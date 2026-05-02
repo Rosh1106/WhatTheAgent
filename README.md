@@ -26,6 +26,18 @@ WhatTheAgent verifies.
 
 ## Quick Start
 
+Install the CLI from source for now:
+
+```bash
+git clone https://github.com/Rosh1106/WhatTheAgent.git
+cd WhatTheAgent
+npm install
+npm run build
+npm link
+```
+
+Then run WhatTheAgent from any agent workspace:
+
 ```bash
 wta understand . --output .wta
 ```
@@ -41,6 +53,12 @@ Ask your coding agent for a safe implementation plan:
 ```bash
 wta plan . --for-codex
 wta plan . --for-claude
+```
+
+After npm publishing, install will become:
+
+```bash
+npm install -g whattheagent
 ```
 
 ## Paste Into Your Agent
@@ -80,18 +98,41 @@ skills/whattheagent-safety-check.skill.md
 
 ## Install
 
+### From source
+
+```bash
+git clone https://github.com/Rosh1106/WhatTheAgent.git
+cd WhatTheAgent
+npm install
+npm run build
+npm link
+```
+
+Verify the CLI:
+
+```bash
+wta --help
+wta instructions --for-claude
+```
+
+### Local development without linking
+
 ```bash
 npm install
 npm run build
+npm run dev -- scan examples/risky-agent
+npm run dev -- instructions --for-claude
 ```
 
-During local development:
+### Future npm install
+
+After publishing:
 
 ```bash
-npm run dev -- scan examples/risky-agent
+npm install -g whattheagent
 ```
 
-After publishing or linking, both binaries work:
+Both binaries work after linking or global install:
 
 ```bash
 whattheagent scan .
