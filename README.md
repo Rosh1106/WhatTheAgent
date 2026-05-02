@@ -4,45 +4,24 @@ WhatTheAgent shows what your AI agent is really doing.
 
 Run one command to see your agent's skills, tools, scripts, MCP servers, secrets, external services, risky chains, and suggested guardrails.
 
-## Choose Your Path
+## Install
 
-WhatTheAgent has two modes:
-
-| Mode | Use this for | Start here |
-|---|---|---|
-| Personal agents | OpenClaw, Hermes, local skills, memory, scripts, MCP servers | [Personal Agents](readme/personal-agents.md) |
-| Workspace stations | Codex, Claude Code, Cursor, Kiro, Windsurf, VS Code, team repos | [Workspace Stations](readme/workspace-stations.md) |
-| Agent instructions | Paste into Claude, Codex, OpenClaw, Hermes, or another agent | [Agent Instructions](readme/agent-instructions.md) |
-
-The full docs hub is in [readme/](readme/README.md).
-
-Core loop:
-
-```text
-User understands and approves.
-Agent implements.
-WhatTheAgent verifies.
-```
-
-## Quick Start
-
-After npm publishing:
+WhatTheAgent is published on npm:
 
 ```bash
 npm install -g whattheagent
 ```
 
-Until the package is published, install from source:
+Verify the CLI:
 
 ```bash
-git clone https://github.com/Rosh1106/WhatTheAgent.git
-cd WhatTheAgent
-npm install
-npm run build
-npm link
+wta --help
+whattheagent --help
 ```
 
-Then run WhatTheAgent from any agent workspace:
+## Quick Start
+
+Run WhatTheAgent from any agent workspace:
 
 ```bash
 wta understand . --output .wta
@@ -59,6 +38,36 @@ Ask your coding agent for a safe implementation plan:
 ```bash
 wta plan . --for-codex
 wta plan . --for-claude
+```
+
+Generate copy-paste instructions for the agent you use:
+
+```bash
+wta instructions --for-claude
+wta instructions --for-codex
+wta instructions --for-openclaw
+wta instructions --for-hermes
+```
+
+## Choose Your Path
+
+WhatTheAgent has two modes:
+
+| Mode | Use this for | Start here |
+|---|---|---|
+| Personal agents | OpenClaw, Hermes, local skills, memory, scripts, MCP servers | [Personal Agents](readme/personal-agents.md) |
+| Workspace stations | Codex, Claude Code, Cursor, Kiro, Windsurf, VS Code, team repos | [Workspace Stations](readme/workspace-stations.md) |
+| Agent instructions | Paste into Claude, Codex, OpenClaw, Hermes, or another agent | [Agent Instructions](readme/agent-instructions.md) |
+| GitHub Actions | CI reports for PRs and agent workspaces | [GitHub Actions](docs/github-action.md) |
+
+The full docs hub is in [readme/](readme/README.md).
+
+Core loop:
+
+```text
+User understands and approves.
+Agent implements.
+WhatTheAgent verifies.
 ```
 
 ## Paste Into Your Agent
@@ -96,50 +105,6 @@ A ready-made example also lives at:
 skills/whattheagent-safety-check.skill.md
 ```
 
-## Install
-
-### Global npm install
-
-Once published:
-
-```bash
-npm install -g whattheagent
-wta --help
-```
-
-### From source
-
-```bash
-git clone https://github.com/Rosh1106/WhatTheAgent.git
-cd WhatTheAgent
-npm install
-npm run build
-npm link
-```
-
-Verify the CLI:
-
-```bash
-wta --help
-wta instructions --for-claude
-```
-
-### Local development without linking
-
-```bash
-npm install
-npm run build
-npm run dev -- scan examples/risky-agent
-npm run dev -- instructions --for-claude
-```
-
-Both binaries work after linking or global install:
-
-```bash
-whattheagent scan .
-wta scan .
-```
-
 ## GitHub Actions
 
 Run WhatTheAgent in CI and upload the local `.wta` report:
@@ -160,7 +125,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - run: npm install -g whattheagent
       - run: wta understand . --output .wta --json --no-color
       - run: wta instructions --for-codex --output .wta/codex-instructions.md
@@ -170,12 +134,36 @@ jobs:
           path: .wta/
 ```
 
-Until the package is published, use the source checkout workflow in [GitHub Actions docs](docs/github-action.md).
-
 A reusable example lives at:
 
 ```text
 examples/github-action/whattheagent.yml
+```
+
+## Development From Source
+
+```bash
+git clone https://github.com/Rosh1106/WhatTheAgent.git
+cd WhatTheAgent
+npm install
+npm run build
+npm link
+```
+
+Local development without linking:
+
+```bash
+npm install
+npm run build
+npm run dev -- scan examples/risky-agent
+npm run dev -- instructions --for-claude
+```
+
+Both binaries work after global install or linking:
+
+```bash
+whattheagent scan .
+wta scan .
 ```
 
 ## Commands
