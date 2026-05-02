@@ -1,0 +1,182 @@
+# Agent Instructions
+
+Use this page when you want to make WhatTheAgent easy to use from inside another agent.
+
+The model is:
+
+```text
+CLI is the source of truth.
+Agent instructions are the onboarding layer.
+Scheduled checks are the continuous guardrail layer.
+```
+
+Do not make the agent guess. The agent should run WhatTheAgent, read the generated evidence, propose safe guardrails, ask before changing anything, and validate afterwards.
+
+## The Simple Promise
+
+Paste this into your agent:
+
+> Use WhatTheAgent to baseline this workspace, show me what capabilities exist, suggest guardrails, ask before changing anything, validate after fixes, and check again whenever new skills or MCP servers are added.
+
+## Universal Copy-Paste Instruction
+
+```md
+You are helping me manage this AI agent workspace safely using WhatTheAgent.
+
+Your job is to help me understand what this agent setup can do, what changed, and what guardrails should be added without breaking existing workflows.
+
+Rules:
+- Do not execute untrusted scripts.
+- Do not start MCP servers.
+- Do not send network requests.
+- Do not print or expose secrets.
+- Do not delete skills, MCP servers, memory files, or identity files unless I explicitly approve.
+- Prefer adding approval, dry-run mode, allowlists, secret redaction, scoped tokens, logging, and policy documentation.
+- Preserve existing workflows.
+
+Start by running:
+
+```bash
+wta understand . --output .wta
+```
+
+Then summarize:
+- detected setup
+- current capabilities
+- expected or normal behavior
+- needs attention
+- suggested guardrails
+
+If this is a personal agent and no baseline exists, ask whether to create one:
+
+```bash
+wta baseline . --profile personal-agent --output .wta
+```
+
+If a baseline already exists, compare against it:
+
+```bash
+wta diff-baseline . --profile personal-agent --output .wta
+```
+
+Before changing anything, show me the proposed fix plan.
+
+Generate a coding-agent plan with:
+
+```bash
+wta plan . --for-claude
+wta plan . --for-codex
+```
+
+When implementing fixes:
+- keep existing functionality working
+- add guardrails around risky capability chains
+- add or update `wta.policy.yaml`
+- add dry-run mode where external sends or payments exist
+- require approval for external_send, execute_code, payment, order_placement, approval_bypass
+- add domain allowlists for external services
+- redact secrets from logs and prompts
+- do not change SOUL.md, IDENTITY.md, PERSONA.md, MEMORY.md, or AGENTS.md unless I explicitly approve
+
+After changes, validate by running:
+
+```bash
+wta understand . --output .wta
+```
+
+Then tell me:
+- what was fixed
+- what still needs attention
+- whether existing workflows appear preserved
+- what command should run daily or when new skills/MCP servers are added
+```
+
+## Generate Instructions From The CLI
+
+```bash
+wta instructions
+wta instructions --for-claude
+wta instructions --for-codex
+wta instructions --for-openclaw
+wta instructions --for-hermes
+```
+
+Write them to a file:
+
+```bash
+wta instructions --for-claude --output .wta/claude-instructions.md
+wta instructions --for-hermes --output skills/whattheagent-safety-check.skill.md
+```
+
+## Personal Agent Routine
+
+For OpenClaw, Hermes, or a custom personal agent:
+
+```bash
+wta understand . --profile personal-agent --output .wta
+wta baseline . --profile personal-agent --output .wta
+wta diff-baseline . --profile personal-agent --output .wta
+wta plan . --for-claude
+```
+
+The agent should ask before creating or updating the baseline.
+
+## Scheduled Check Routine
+
+Daily check:
+
+```bash
+wta diff-baseline . --profile personal-agent --output .wta
+```
+
+When a new skill or MCP server is added:
+
+```bash
+wta diff-baseline . --profile personal-agent --output .wta
+```
+
+The agent should summarize:
+
+- new skills
+- removed skills
+- new MCP/tool servers
+- new capabilities
+- added risk chains
+- changed identity/persona/memory surfaces
+- recommended guardrails
+
+## What The Agent May Change Automatically
+
+Safe config-only changes:
+
+- create `wta.policy.yaml`
+- add expected entries after user approval
+- add protected files list
+- add baseline files
+- add GitHub Action workflow
+- add `.wtaignore`
+
+Agent-assisted changes after plan approval:
+
+- add dry-run mode
+- add approval checks
+- add external domain allowlist enforcement
+- add command allowlist enforcement
+- add secret redaction helpers
+- add audit logging
+
+Manual-only unless explicitly approved:
+
+- remove skills
+- remove MCP servers
+- modify SOUL.md
+- modify IDENTITY.md
+- modify PERSONA.md
+- modify MEMORY.md
+- block payment or order flows
+
+## Product Rule
+
+Never break the user's agent workflow.
+
+Wrap risky capability with approval, scope, dry-run, logging, policy, and verification instead of deleting or disabling it by default.
