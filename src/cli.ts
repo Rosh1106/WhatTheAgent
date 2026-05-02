@@ -2,7 +2,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
-import { availableAdapters } from "./adapters/index.js";
+import { wellKnownClients } from "./clients/wellKnownClients.js";
 import { planWorkspace } from "./core/planWorkspace.js";
 import { createPersonalAgentBaseline, diffPersonalAgentBaseline, starterPolicy, writePersonalBaselineOutputs, writePersonalDiffOutputs, writeStarterPolicy } from "./core/personalAgentBaseline.js";
 import { buildProbePlan } from "./core/probePlan.js";
@@ -168,7 +168,8 @@ program
 
 program
   .command("compatibility")
-  .option("--json", "print deterministic compatibility JSON")
+  .description("list well-known agent clients and local files WhatTheAgent checks")
+  .option("--json", "print deterministic known-client JSON")
   .option("--no-color", "disable color output")
   .option("--quiet", "suppress stdout")
   .option("--output <file>", "write compatibility JSON to a file")
@@ -176,7 +177,7 @@ program
     await handleErrors(async () => {
       const result = {
         schemaVersion: "0.1",
-        adapters: availableAdapters()
+        knownClients: wellKnownClients
       };
       if (options.output) await writeJsonFile(options.output, result);
       if (options.quiet) return;

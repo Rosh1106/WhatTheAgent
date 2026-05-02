@@ -92,7 +92,7 @@ The report is split into:
 
 MCP servers are shown directly as MCP servers in reports and summaries.
 
-For honest current and planned agent support, see [Compatibility](readme/compatibility.md).
+For the current known-client path table, see [Compatibility](readme/compatibility.md).
 
 ## Workspace Detection
 
@@ -107,9 +107,9 @@ WhatTheAgent automatically detects workspace surfaces from files it can see:
 - policy: `wta.policy.yaml`, `.wta/policy.*`
 - CI: GitHub workflows that run `wta` or `whattheagent`
 
-Full platform adapters for Codex, Claude Code, Kiro, Windsurf, OpenClaw, Hermes, and others are tracked in the compatibility roadmap. Until an adapter is implemented, WhatTheAgent reports the surfaces it can prove from local files instead of guessing.
+The client list is intentionally simple: WhatTheAgent checks known config and skills paths, parses MCP server configs when present, and reports only the surfaces it can prove from local files.
 
-Check support levels:
+List known client paths:
 
 ```bash
 wta compatibility

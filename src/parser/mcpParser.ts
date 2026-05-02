@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
-import type { AdapterMetadata, Capability, Evidence, Finding, McpRiskFlag, McpServerComponent } from "../core/types.js";
+import type { Capability, Evidence, Finding, McpRiskFlag, McpServerComponent, WellKnownClient } from "../core/types.js";
 import { classifyCapability } from "../risk/classifier.js";
 import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
 
@@ -18,7 +18,7 @@ interface RawMcpServer {
   transport?: unknown;
 }
 
-export async function parseMcpConfig(root: string, configFile: string, allowMcpExec = false, adapter?: AdapterMetadata): Promise<ParsedMcpConfig> {
+export async function parseMcpConfig(root: string, configFile: string, allowMcpExec = false, client?: WellKnownClient): Promise<ParsedMcpConfig> {
   const raw = await fs.readFile(configFile, "utf8");
   const relPath = relativePath(root, configFile);
   const parsed = parseJsonc(raw) as unknown;
@@ -43,9 +43,8 @@ export async function parseMcpConfig(root: string, configFile: string, allowMcpE
       metadata: {
         configFile: relPath,
         serverName,
-        adapterId: adapter?.id,
-        adapterName: adapter?.name,
-        adapterSupportLevel: adapter?.supportLevel,
+        clientId: client?.id,
+        clientName: client?.name,
         command,
         args,
         env,
@@ -66,10 +65,12 @@ export async function parseMcpConfig(root: string, configFile: string, allowMcpE
 function extractServerEntries(value: unknown): Array<[string, RawMcpServer]> {
   if (!isObject(value)) return [];
   const root = value as Record<string, unknown>;
-  const container = firstObject(root.mcpServers, root.servers, root.mcp_servers) ?? root;
+  const mcp = isObject(root.mcp) ? root.mcp : undefined;
+  const container = firstObject(root.mcpServers, root.servers, root.mcp_servers, mcp?.servers, mcp?.mcpServers) ?? (looksLikeServerMap(root) ? root : undefined);
+  if (!container) return [];
 
   return Object.entries(container)
-    .filter(([, server]) => isObject(server))
+    .filter(([, server]) => isObject(server) && looksLikeMcpServer(server))
     .map(([name, server]): [string, RawMcpServer] => [name, server as RawMcpServer])
     .sort(([left], [right]) => left.localeCompare(right));
 }
@@ -152,6 +153,15 @@ function firstObject(...values: unknown[]): Record<string, unknown> | undefined 
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function looksLikeServerMap(value: Record<string, unknown>): boolean {
+  const entries = Object.values(value);
+  return entries.length > 0 && entries.every((entry) => isObject(entry) && looksLikeMcpServer(entry));
+}
+
+function looksLikeMcpServer(value: Record<string, unknown>): boolean {
+  return typeof value.command === "string" || typeof value.url === "string" || Array.isArray(value.args) || typeof value.transport === "string";
 }
 
 function findLine(content: string, pattern: string): { line: number; snippet: string } | undefined {

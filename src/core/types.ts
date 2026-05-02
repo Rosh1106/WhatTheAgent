@@ -85,9 +85,8 @@ export interface McpServerComponent extends Component {
   metadata: {
     configFile: string;
     serverName: string;
-    adapterId?: string;
-    adapterName?: string;
-    adapterSupportLevel?: AdapterSupportLevel;
+    clientId?: string;
+    clientName?: string;
     command?: string;
     args: string[];
     env: Record<string, string>;
@@ -449,37 +448,34 @@ export interface DiffResult {
   }>;
 }
 
-export type AdapterSupportLevel =
-  | "supported"
-  | "partial"
-  | "experimental"
-  | "planned";
-
-export interface AdapterMetadata {
+export interface WellKnownClient {
   id: string;
   name: string;
-  supportLevel: AdapterSupportLevel;
-  configFiles: string[];
-  description: string;
+  clientExistsPaths: string[];
+  mcpConfigPaths: string[];
+  skillsDirPaths: string[];
 }
 
-export interface DetectedAdapter {
+export interface DetectedClient {
   id: string;
   name: string;
-  supportLevel: AdapterSupportLevel;
   detectedFiles: string[];
+  mcpConfigFiles: string[];
+  skillsDirs: string[];
 }
 
-export interface AdapterScanResult {
-  adapter: AdapterMetadata;
+export interface ClientScanResult {
+  client: WellKnownClient;
   components: Component[];
   findings: Finding[];
   detectedFiles: string[];
+  mcpConfigFiles: string[];
+  skillsDirs: string[];
 }
 
 export interface CompatibilityInfo {
-  detectedAdapters: DetectedAdapter[];
-  availableAdapters: AdapterMetadata[];
+  detectedClients: DetectedClient[];
+  knownClients: WellKnownClient[];
 }
 
 export interface PolicyProposal {

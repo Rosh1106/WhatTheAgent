@@ -101,7 +101,7 @@ export function formatUnderstandSummary(result: UnderstandResult, options: Forma
     `- ${result.inventory.counts.skills} skill${result.inventory.counts.skills === 1 ? "" : "s"}`,
     `- ${result.inventory.counts.scripts} script${result.inventory.counts.scripts === 1 ? "" : "s"}`,
     `- ${result.capabilities.length} capability type${result.capabilities.length === 1 ? "" : "s"}`,
-    ...formatDetectedAdapters(result),
+    ...formatDetectedClients(result),
     "",
     "What your agent can do"
   ];
@@ -165,20 +165,16 @@ export function formatAgentPlanSummary(plan: AgentPlan): string {
   return plan.prompt;
 }
 
-export function formatCompatibilitySummary(result: { adapters: Array<{ name: string; supportLevel: string; configFiles: string[]; description: string }> }): string {
-  const groups = ["supported", "partial", "experimental", "planned"];
-  const lines = ["WhatTheAgent compatibility", ""];
-  for (const group of groups) {
-    const adapters = result.adapters.filter((adapter) => adapter.supportLevel === group);
-    if (adapters.length === 0) continue;
-    lines.push(`${capitalize(group)}`);
-    for (const adapter of adapters) {
-      const files = adapter.configFiles.length > 0 ? ` (${adapter.configFiles.join(", ")})` : "";
-      lines.push(`- ${adapter.name}${files}`);
-    }
-    lines.push("");
+export function formatCompatibilitySummary(result: { knownClients: Array<{ name: string; clientExistsPaths: string[]; mcpConfigPaths: string[]; skillsDirPaths: string[] }> }): string {
+  const lines = ["WhatTheAgent known clients", ""];
+  for (const client of result.knownClients) {
+    const mcpFiles = client.mcpConfigPaths.length > 0 ? client.mcpConfigPaths.join(", ") : "none";
+    const skillsDirs = client.skillsDirPaths.length > 0 ? client.skillsDirPaths.join(", ") : "none";
+    lines.push(`- ${client.name}`);
+    lines.push(`  MCP configs: ${mcpFiles}`);
+    lines.push(`  Skills: ${skillsDirs}`);
   }
-  return `${lines.join("\n").trimEnd()}\n`;
+  return `${lines.join("\n")}\n`;
 }
 
 export function formatProbePlanSummary(plan: ProbePlan): string {
@@ -207,16 +203,16 @@ function humanCapability(capability: string): string {
   return capability.replace(/_/g, " ");
 }
 
-function formatDetectedAdapters(result: UnderstandResult): string[] {
-  const adapters = result.inventory.compatibility?.detectedAdapters ?? [];
-  if (adapters.length === 0) return ["- detected platform configs: none"];
+function formatDetectedClients(result: UnderstandResult): string[] {
+  const clients = result.inventory.compatibility?.detectedClients ?? [];
+  if (clients.length === 0) return ["- detected agent clients: none"];
   return [
-    `- detected platform config${adapters.length === 1 ? "" : "s"}: ${adapters.map((adapter) => `${adapter.name} (${adapter.detectedFiles.join(", ")})`).join("; ")}`
+    `- detected agent client${clients.length === 1 ? "" : "s"}: ${clients.map((client) => `${client.name} (${detectedClientFiles(client).join(", ")})`).join("; ")}`
   ];
 }
 
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+function detectedClientFiles(client: { detectedFiles: string[]; mcpConfigFiles: string[]; skillsDirs: string[] }): string[] {
+  return [...new Set([...client.detectedFiles, ...client.mcpConfigFiles, ...client.skillsDirs])].sort();
 }
 
 function suggestedFixForCapabilities(capabilities: string[]): string {

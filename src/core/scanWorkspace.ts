@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { AgentProfile, Capability, CompatibilityInfo, Component, ComponentType, Finding, RiskLevel, ScanOptions, ScanResult, ScanSummary } from "./types.js";
-import { availableAdapters } from "../adapters/index.js";
+import { wellKnownClients } from "../clients/wellKnownClients.js";
 import { buildGraph } from "../graph/graphBuilder.js";
 import { detectRiskChains } from "../risk/chainDetector.js";
 import { scanMcpConfigs } from "../scanner/mcpScanner.js";
@@ -109,20 +109,21 @@ function withProfileCompatibility(
     return compatibility;
   }
 
-  const adapter = availableAdapters().find((candidate) => candidate.id === profile);
-  if (!adapter || compatibility.detectedAdapters.some((detected) => detected.id === adapter.id)) {
+  const client = wellKnownClients.find((candidate) => candidate.id === profile);
+  if (!client || compatibility.detectedClients.some((detected) => detected.id === client.id)) {
     return compatibility;
   }
 
   return {
     ...compatibility,
-    detectedAdapters: [
-      ...compatibility.detectedAdapters,
+    detectedClients: [
+      ...compatibility.detectedClients,
       {
-        id: adapter.id,
-        name: adapter.name,
-        supportLevel: adapter.supportLevel,
-        detectedFiles: personalComponents.map((component) => component.path).filter((file): file is string => Boolean(file)).sort()
+        id: client.id,
+        name: client.name,
+        detectedFiles: personalComponents.map((component) => component.path).filter((file): file is string => Boolean(file)).sort(),
+        mcpConfigFiles: [],
+        skillsDirs: []
       }
     ].sort((a, b) => a.name.localeCompare(b.name))
   };

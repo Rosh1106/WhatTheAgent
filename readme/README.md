@@ -21,7 +21,7 @@ Workspace-station users care about repo-local agent configs, MCP servers, script
 |---|---|---|
 | OpenClaw, Hermes, local personal agents, custom skill folders | [Personal Agents](./personal-agents.md) | A capability map and safety checklist for your personal agent setup |
 | Codex, Claude Code, Cursor, Kiro, Windsurf, VS Code, team repos | [Workspace Stations](./workspace-stations.md) | A repo/workspace capability report plus fix plans for coding agents |
-| I want to know what tools are supported | [Compatibility](./compatibility.md) | Honest current, partial, and planned compatibility status |
+| I want to know what clients and files are checked | [Compatibility](./compatibility.md) | Known agent clients, MCP config paths, and skills paths |
 
 ## Core Product Loop
 

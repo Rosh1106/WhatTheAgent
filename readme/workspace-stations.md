@@ -73,7 +73,7 @@ Current automatic detection:
 | Policy | `wta.policy.yaml`, `.wta/policy.*` |
 | CI | GitHub workflows that run `wta` or `whattheagent` |
 
-For platforms like Codex, Claude Code, Kiro, Windsurf, OpenClaw, and Hermes, WhatTheAgent should only claim full support after an adapter parses that tool's real config format. Until then, the report shows the concrete surfaces it found instead of guessing.
+For platforms like Codex, Claude Code, Kiro, Windsurf, OpenClaw, and Hermes, WhatTheAgent starts with a known-client path table. It checks the files it can see, parses MCP server configs when present, and avoids claiming hidden capabilities from files it cannot prove locally.
 
 ## How To Read The Report
 

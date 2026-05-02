@@ -1,118 +1,54 @@
 # Compatibility
 
-WhatTheAgent should only claim what it can detect from local files.
+WhatTheAgent compatibility is a simple known-client path table.
 
-Compatibility means:
+For each agent client, WhatTheAgent tracks:
 
-1. We know where the agent stores config.
-2. We can detect the config.
-3. We can parse enough of it to normalize surfaces and capabilities.
-4. We can show it in `wta understand`.
-5. We have fixture or test coverage for the claim.
+- paths that show the client exists
+- MCP config paths
+- skills directory paths
 
-## Status Meanings
+When a path exists inside the scanned root, WhatTheAgent reports it. When an MCP config exists, it parses the MCP servers statically and maps them into capabilities.
 
-| Status | Meaning |
-|---|---|
-| Supported | Parser plus capability inference plus fixture/test coverage |
-| Partial | Detects common config but may not understand every feature |
-| Experimental | Best-effort detection; output may be incomplete |
-| Planned | Not implemented yet |
+## Current Known Clients
 
-## Current And Planned Compatibility
+| Client | MCP configs | Skills |
+|---|---|---|
+| Amazon Q | `~/.aws/amazonq/agents/default.json`, `~/.aws/amazonq/agents/mcp.json`, `~/.aws/amazonq/mcp.json` | none |
+| Amp | none | `~/.config/agents/skills`, `.amp/skills` |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` | none |
+| Claude Code | `~/.claude.json` | `~/.claude/skills` |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`, `~/AppData/Roaming/Claude/claude_desktop_config.json`, `claude_desktop_config.json` | none |
+| Codex | none | `~/.codex/skills` |
+| Cursor | `~/.cursor/mcp.json`, `.cursor/mcp.json` | `~/.cursor/skills`, `.cursor/skills` |
+| Gemini CLI | `~/.gemini/settings.json` | `~/.gemini/skills` |
+| Hermes | none | personal profile scans markdown skills and scripts |
+| Kiro | `~/.kiro/settings/mcp.json` | none |
+| OpenClaw | none | `~/.clawdbot/skills`, `~/.openclaw/skills`, `~/.openclaw/workspace/skills`, `.openclaw/skills` |
+| OpenCode | none | none |
+| VS Code | `~/Library/Application Support/Code/User/settings.json`, `~/.vscode/mcp.json`, `~/Library/Application Support/Code/User/mcp.json`, `~/.config/Code/User/settings.json`, `~/.config/Code/User/mcp.json`, `.vscode/mcp.json` | `~/.copilot/skills` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` | `~/.codeium/windsurf/skills` |
+| Workspace MCP | `.mcp.json`, `mcp.json` | none |
 
-| Agent / Tool | Status | WhatTheAgent detects or should detect |
-|---|---:|---|
-| Generic MCP config | Partial | MCP servers, commands, args, env vars, remote URLs |
-| Cursor | Partial | `.cursor/mcp.json` MCP servers |
-| Claude Desktop | Partial | `claude_desktop_config.json` MCP servers |
-| VS Code | Partial | `.vscode/mcp.json` MCP servers |
-| Claude Code | Planned | commands, hooks, local config, tool permissions |
-| Codex CLI | Planned | skills, configs, tool access, local permissions when documented |
-| Kiro | Planned | agent config and tool permissions |
-| Windsurf | Planned | rules, workflows, MCP configs |
-| Cline | Planned | MCP configs and agent rules |
-| Roo Code | Planned | mode/config/tool settings |
-| Continue | Planned | model/tool configs |
-| Aider | Planned | repo-level config and command execution context |
-| Goose | Planned | toolkits, extensions, MCP configs |
-| OpenCode | Planned | agent/tool config |
-| OpenClaw | Experimental | `SOUL.md`, `AGENTS.md`, markdown skills, scripts, MCP configs, baseline/diff policy review |
-| Hermes | Experimental | `IDENTITY.md`, `PERSONA.md`, `MEMORY.md`, markdown skills, scripts, MCP configs, baseline/diff policy review |
-
-## Current Practical Support
-
-Today, WhatTheAgent statically scans known MCP config paths:
-
-```text
-.mcp.json
-mcp.json
-claude_desktop_config.json
-.cursor/mcp.json
-.vscode/mcp.json
-```
-
-MCP servers are represented in the graph as:
-
-```text
-MCP server
-```
-
-This is useful, but it is not the same as full agent support. For example, full Cursor or Claude Code support would require parsing their broader rules, commands, permissions, hooks, and config models.
-
-## Adapter Model
-
-WhatTheAgent uses adapters to connect platform-specific config files to the common capability model:
-
-```text
-Agent config
-  -> adapter
-  -> setup surface
-  -> normalized capabilities
-  -> controls
-  -> gaps
-  -> graph
-  -> report and fix plan
-```
-
-Implemented command:
+## Commands
 
 ```bash
 wta compatibility
 wta compatibility --json
 ```
 
-Implemented personal-agent commands:
+## Important Behavior
 
-```bash
-wta understand . --profile hermes
-wta baseline . --profile hermes
-wta diff-baseline . --profile hermes
-wta init-policy . --profile openclaw
-```
+Project scans stay inside the project. Home-directory paths like `~/.cursor/mcp.json` are checked when you scan your home directory.
 
-Planned adapter metadata:
-
-```ts
-export interface AdapterMetadata {
-  id: string;
-  name: string;
-  supportLevel: "supported" | "partial" | "experimental" | "planned";
-  configFiles: string[];
-  description: string;
-}
-```
+This keeps the scanner predictable for coding agents and CI: it reports local evidence, not guessed support.
 
 ## Contribution Path
 
-To add a new agent adapter, contributors should provide:
+To add another client, add one registry entry with:
 
-- adapter metadata
-- config file paths
-- parser or static detector
-- normalized components and findings
-- fixture workspace
-- documentation
-- support level that does not overclaim
-
-Personal-agent adapters should also document identity, persona, memory, skill, tool, and script surfaces.
+- client name
+- client-exists paths
+- MCP config paths
+- skills directory paths
+- a fixture if the config should be parsed

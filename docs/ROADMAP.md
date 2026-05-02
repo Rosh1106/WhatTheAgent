@@ -103,7 +103,7 @@ Roadmap items:
 - `.wta/summary.md`
 - `wta ci . --fail-on high --output .wta`
 - PR-comment friendly summaries
-- adapter compatibility metadata
+- known-client path coverage
 - `wta compatibility`
 
 ## Capability-first model
