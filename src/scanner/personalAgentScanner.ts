@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import type { AgentProfile, Component, Finding, SkillComponent } from "../core/types.js";
@@ -6,6 +5,7 @@ import { classifyCapability } from "../risk/classifier.js";
 import { findFiles } from "../utils/fileWalker.js";
 import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
 import { skillInstructionPatterns } from "../utils/patterns.js";
+import { readTextFileForScan, skippedMetadata } from "../utils/safeRead.js";
 
 export interface PersonalAgentScanResult {
   components: Component[];
@@ -64,6 +64,7 @@ async function scanIdentitySurface(root: string, file: string, profile: AgentPro
   const relPath = relativePath(root, file);
   const label = path.basename(file);
   const type = label === "MEMORY.md" ? "memory" : label === "AGENTS.md" ? "rule" : "prompt";
+  const safeRead = await readTextFileForScan(file);
   const component: Component = {
     id: stableId(type, relPath),
     type,
@@ -72,22 +73,42 @@ async function scanIdentitySurface(root: string, file: string, profile: AgentPro
     metadata: {
       profile,
       surface: type,
-      personalAgent: true
+      personalAgent: true,
+      ...(safeRead.skipped ? skippedMetadata(safeRead.skipped) : {})
     }
   };
 
+  if (safeRead.skipped) {
+    return {
+      component,
+      findings: [{
+        id: stableId("finding", `${component.id}-skipped-large-file`),
+        componentId: component.id,
+        capability: "read_file",
+        risk: "low",
+        evidence: {
+          file: relPath,
+          pattern: "skipped:large-file",
+          snippet: `Skipped personal-agent file larger than ${safeRead.skipped.maxBytes} bytes`
+        }
+      }]
+    };
+  }
+
+  const parsed = matter(safeRead.content ?? "");
   return {
     component,
-    findings: await scanMarkdownCapabilities(root, file, component.id)
+    findings: scanMarkdownText(root, file, component.id, parsed.content, getBodyStartLine(safeRead.content ?? ""))
   };
 }
 
 async function scanPersonalSkill(root: string, file: string, profile: AgentProfile): Promise<{ component: SkillComponent; findings: Finding[] }> {
-  const content = await fs.readFile(file, "utf8");
+  const safeRead = await readTextFileForScan(file);
+  const content = safeRead.content ?? "";
   const parsed = matter(content);
   const relPath = relativePath(root, file);
-  const name = readString(parsed.data.name) ?? path.basename(file, path.extname(file));
-  const description = readString(parsed.data.description);
+  const name = safeRead.skipped ? path.basename(file, path.extname(file)) : readString(parsed.data.name) ?? path.basename(file, path.extname(file));
+  const description = safeRead.skipped ? undefined : readString(parsed.data.description);
   const component: SkillComponent = {
     id: stableId("skill", relPath),
     type: "skill",
@@ -96,25 +117,37 @@ async function scanPersonalSkill(root: string, file: string, profile: AgentProfi
     metadata: {
       name,
       description,
-      frontmatter: Object.fromEntries(Object.entries(parsed.data).sort(([a], [b]) => a.localeCompare(b))),
-      referencedFiles: extractReferencedFiles(parsed.content),
+      frontmatter: safeRead.skipped ? {} : Object.fromEntries(Object.entries(parsed.data).sort(([a], [b]) => a.localeCompare(b))),
+      referencedFiles: safeRead.skipped ? [] : extractReferencedFiles(parsed.content),
       scripts: [],
       profile,
       personalAgent: true,
-      skillFormat: "personal-agent-markdown"
+      skillFormat: "personal-agent-markdown",
+      ...(safeRead.skipped ? skippedMetadata(safeRead.skipped) : {})
     }
   };
+
+  if (safeRead.skipped) {
+    return {
+      component,
+      findings: [{
+        id: stableId("finding", `${component.id}-skipped-large-file`),
+        componentId: component.id,
+        capability: "read_file",
+        risk: "low",
+        evidence: {
+          file: relPath,
+          pattern: "skipped:large-file",
+          snippet: `Skipped personal skill larger than ${safeRead.skipped.maxBytes} bytes`
+        }
+      }]
+    };
+  }
 
   return {
     component,
     findings: scanMarkdownText(root, file, component.id, parsed.content, getBodyStartLine(content))
   };
-}
-
-async function scanMarkdownCapabilities(root: string, file: string, componentId: string): Promise<Finding[]> {
-  const content = await fs.readFile(file, "utf8");
-  const parsed = matter(content);
-  return scanMarkdownText(root, file, componentId, parsed.content, getBodyStartLine(content));
 }
 
 function scanMarkdownText(root: string, file: string, componentId: string, body: string, bodyStartLine: number): Finding[] {
