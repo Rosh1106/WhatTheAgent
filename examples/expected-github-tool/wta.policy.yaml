@@ -1,0 +1,27 @@
+expected:
+  - component: "*github-readonly"
+    capability: "execute_code"
+    reason: "Pinned read-only GitHub MCP server is allowed to start through the configured client."
+  - component: "*github-readonly"
+    capability: "network_access"
+    reason: "GitHub read-only MCP server needs network access to api.github.com."
+  - component: "*github-readonly"
+    capability: "credential_access"
+    reason: "Uses a scoped read-only GitHub token managed by endpoint policy."
+
+human_approval:
+  required_for:
+    - tool_server_start
+
+command_allowlist:
+  commands:
+    - "npx @modelcontextprotocol/server-github@1.0.0 --readonly https://api.github.com"
+
+sandbox_enabled: true
+
+external_domain_allowlist:
+  domains:
+    - api.github.com
+
+least_privilege_token:
+  token_scope: readonly

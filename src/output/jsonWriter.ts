@@ -40,11 +40,36 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
   await writeJsonFile(graphFile, result.graph satisfies CapabilityGraph);
   await writeJsonFile(agentContextFile, {
     schemaVersion: result.schemaVersion,
+    goal: "Help a coding agent make safe, reviewable changes that reduce meaningful agent capability/control gaps.",
     workspace: result.workspace,
-    controlGaps: result.controlGaps,
-    quickFixes: result.quickFixes,
-    implementationTasks: result.implementationTasks,
-    riskChains: result.riskChains
+    workspaceSummary: `${result.inventory.counts.skills} skills, ${result.inventory.counts.toolServers} tool servers, ${result.inventory.counts.scripts} scripts, ${result.summary.controlGapCount} control gaps, ${result.riskChains.length} risk chains.`,
+    needsAttention: [
+      ...result.riskChains.map((chain) => ({
+        id: chain.id,
+        componentId: chain.componentId,
+        title: chain.name,
+        impact: chain.impact,
+        message: chain.message,
+        capabilities: chain.capabilities,
+        evidence: chain.evidence.slice(0, 5)
+      })),
+      ...result.controlGaps.slice(0, 50).map((gap) => ({
+        id: gap.id,
+        componentId: gap.componentId,
+        title: gap.control,
+        impact: gap.impact,
+        message: gap.message,
+        evidence: gap.evidence
+      }))
+    ],
+    expected: result.expected,
+    fixableTasks: result.implementationTasks.slice(0, 50),
+    doNotDo: [
+      "Do not remove useful agent functionality unless the user explicitly approves.",
+      "Do not execute real external sends, payments, MCP servers, or destructive commands while fixing.",
+      "Do not print, persist, or upload secrets."
+    ],
+    verificationCommands: ["npm run typecheck", "npm run build", "npm run dev -- understand ."]
   });
   await fs.writeFile(fixPlanFile, renderFixPlan(result), "utf8");
   await fs.writeFile(htmlFile, renderHtmlReport(result), "utf8");

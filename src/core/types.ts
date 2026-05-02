@@ -21,6 +21,19 @@ export type Capability =
   | "approval_bypass";
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type FindingCategory =
+  | "inventory"
+  | "observation"
+  | "needs_attention"
+  | "control_gap"
+  | "risk_chain"
+  | "fix_ready";
+export type Confidence = "low" | "medium" | "high";
+export type UserImpact =
+  | "informational"
+  | "review_recommended"
+  | "fix_recommended"
+  | "fix_required";
 
 export interface Evidence {
   file: string;
@@ -35,6 +48,9 @@ export interface Finding {
   capability: Capability;
   risk: RiskLevel;
   evidence: Evidence;
+  category?: FindingCategory;
+  confidence?: Confidence;
+  impact?: UserImpact;
 }
 
 export interface Component {
@@ -86,6 +102,9 @@ export interface RiskChain {
   risk: RiskLevel;
   message: string;
   evidence: Evidence[];
+  category?: FindingCategory;
+  confidence?: Confidence;
+  impact?: UserImpact;
 }
 
 export type GraphNodeType =
@@ -105,6 +124,7 @@ export type GraphNodeType =
   | "EnvVar"
   | "APIEndpoint"
   | "Capability"
+  | "Observation"
   | "Control"
   | "ControlGap"
   | "RiskChain"
@@ -202,6 +222,9 @@ export interface NormalizedCapability {
   count: number;
   risk: RiskLevel;
   evidence: Evidence[];
+  category?: FindingCategory;
+  confidence?: Confidence;
+  impact?: UserImpact;
 }
 
 export interface AgentSurface {
@@ -248,6 +271,9 @@ export interface ControlGap {
   risk: RiskLevel;
   message: string;
   evidence: Evidence[];
+  category?: FindingCategory;
+  confidence?: Confidence;
+  impact?: UserImpact;
 }
 
 export interface QuickFix {
@@ -259,6 +285,9 @@ export interface QuickFix {
   rationale: string;
   steps: string[];
   controlGaps: string[];
+  category?: FindingCategory;
+  confidence?: Confidence;
+  impact?: UserImpact;
 }
 
 export interface ImplementationTask {
@@ -269,6 +298,25 @@ export interface ImplementationTask {
   instructions: string;
   acceptanceCriteria: string[];
   relatedQuickFixes: string[];
+  category?: FindingCategory;
+  confidence?: Confidence;
+  impact?: UserImpact;
+  verificationCommands?: string[];
+  doNotDo?: string[];
+  why?: string;
+}
+
+export interface Observation {
+  id: string;
+  componentId: string;
+  capability?: Capability;
+  category: "inventory" | "observation" | "needs_attention";
+  confidence: Confidence;
+  impact: UserImpact;
+  message: string;
+  evidence: Evidence[];
+  expected?: boolean;
+  suppressionReason?: string;
 }
 
 export interface SetupInventory {
@@ -291,6 +339,8 @@ export interface UnderstandResult {
   };
   inventory: SetupInventory;
   capabilities: NormalizedCapability[];
+  observations: Observation[];
+  expected: Observation[];
   controls: Control[];
   controlGaps: ControlGap[];
   riskChains: RiskChain[];
@@ -321,6 +371,9 @@ export interface AgentPlan {
   tasks: ImplementationTask[];
   instructions: string;
   acceptanceCriteria: string[];
+  prompt: string;
+  verificationCommands: string[];
+  doNotDo: string[];
 }
 
 export type ProbeStatus = "not_run" | "sandbox_confirmed" | "sandbox_blocked" | "skipped";

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "github-readonly": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-github@1.0.0",
+        "--readonly",
+        "https://api.github.com"
+      ],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_READONLY_TOKEN}"
+      },
+      "transport": "stdio"
+    }
+  }
+}

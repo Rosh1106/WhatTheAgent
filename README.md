@@ -63,11 +63,37 @@ wta diff old.json new.json --json --quiet
 
 MCP servers are normalized as tool servers with subtype `mcp_server` in the understand output.
 
+`understand` separates the report into the buckets a human or coding agent needs:
+
+- inventory: skills, scripts, MCP tool servers, and detected controls
+- capabilities: what the agent can do, with evidence and confidence
+- needs attention: high-risk chains and sensitive missing controls
+- normal observations: ordinary capabilities such as basic reads or expected network access
+- expected / acknowledged: capabilities declared in `wta.policy.yaml`
+- fixes: quick fixes and agent implementation tasks
+
 Control detection is deterministic and local. WhatTheAgent looks for:
 
 - `wta.policy.yaml`, `wta.policy.yml`, `wta.policy.json`, or `.wta/policy.*`
 - GitHub Actions workflows that run `wta` or `whattheagent`
 - Policy text for command allowlists, domain allowlists, human approval, secret controls, sandbox controls, network restrictions, CI gates, audit logging, delegation policy, and payment approval
+
+Expected capabilities and suppressions can be declared in policy:
+
+```yaml
+expected:
+  - component: "mcp.github-readonly"
+    capability: "network_access"
+    reason: "GitHub read-only MCP server needs network access to api.github.com."
+
+suppressions:
+  - component: "script.local-report"
+    capability: "read_file"
+    reason: "Reads only workspace report files."
+    expires: "2026-12-31"
+```
+
+This does not hide inventory. It moves acknowledged findings out of “needs attention” so false positives are easier to spot.
 
 Runtime and sandbox features are preview/plan-only in this version:
 
@@ -113,6 +139,20 @@ The example workspace intentionally triggers:
 - `execute_code`
 - `network_access`
 - data exfiltration and remote execution risk chains
+
+Additional fixtures cover common review cases:
+
+```bash
+npm run dev -- understand examples/benign-agent
+npm run dev -- understand examples/expected-github-tool
+npm run dev -- understand examples/risky-finance-agent
+npm run dev -- understand examples/critical-payment-agent
+```
+
+- `benign-agent` shows low-noise inventory and ordinary observations
+- `expected-github-tool` shows an expected MCP tool server declared by policy
+- `risky-finance-agent` triggers credential plus external-send risk
+- `critical-payment-agent` triggers payment and order-placement risk
 
 ## JSON Shape
 
