@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "workspace-search": {
+      "command": "node",
+      "args": [
+        "./tools/workspace-search.js"
+      ],
+      "env": {},
+      "transport": "stdio"
+    }
+  }
+}

@@ -2,6 +2,10 @@ export type ComponentType =
   | "skill"
   | "mcp_server"
   | "script"
+  | "prompt"
+  | "rule"
+  | "memory"
+  | "config"
   | "env_var"
   | "api_endpoint"
   | "capability";
@@ -70,6 +74,9 @@ export interface SkillComponent extends Component {
     frontmatter: Record<string, unknown>;
     referencedFiles: string[];
     scripts: string[];
+    profile?: AgentProfile;
+    personalAgent?: boolean;
+    skillFormat?: string;
   };
 }
 
@@ -78,6 +85,9 @@ export interface McpServerComponent extends Component {
   metadata: {
     configFile: string;
     serverName: string;
+    adapterId?: string;
+    adapterName?: string;
+    adapterSupportLevel?: AdapterSupportLevel;
     command?: string;
     args: string[];
     env: Record<string, string>;
@@ -183,12 +193,16 @@ export interface ScanResult {
   findings: Finding[];
   riskChains: RiskChain[];
   graph: CapabilityGraph;
+  compatibility?: CompatibilityInfo;
   summary: ScanSummary;
 }
 
 export interface ScanOptions {
   allowMcpExec?: boolean;
+  profile?: AgentProfile;
 }
+
+export type AgentProfile = "workspace" | "personal-agent" | "openclaw" | "hermes";
 
 export type CapabilityState =
   | "declared"
@@ -229,7 +243,7 @@ export interface NormalizedCapability {
 
 export interface AgentSurface {
   id: string;
-  type: "skill" | "script" | "tool_server" | "config";
+  type: "skill" | "script" | "tool_server" | "config" | "prompt" | "rule" | "memory";
   subtype?: string;
   label: string;
   path?: string;
@@ -323,6 +337,7 @@ export interface SetupInventory {
   workspaceRoot: string;
   surfaces: AgentSurface[];
   toolServers: ToolServer[];
+  compatibility?: CompatibilityInfo;
   counts: {
     skills: number;
     scripts: number;
@@ -432,4 +447,88 @@ export interface DiffResult {
     to: RiskLevel;
     evidence: Evidence;
   }>;
+}
+
+export type AdapterSupportLevel =
+  | "supported"
+  | "partial"
+  | "experimental"
+  | "planned";
+
+export interface AdapterMetadata {
+  id: string;
+  name: string;
+  supportLevel: AdapterSupportLevel;
+  configFiles: string[];
+  description: string;
+}
+
+export interface DetectedAdapter {
+  id: string;
+  name: string;
+  supportLevel: AdapterSupportLevel;
+  detectedFiles: string[];
+}
+
+export interface AdapterScanResult {
+  adapter: AdapterMetadata;
+  components: Component[];
+  findings: Finding[];
+  detectedFiles: string[];
+}
+
+export interface CompatibilityInfo {
+  detectedAdapters: DetectedAdapter[];
+  availableAdapters: AdapterMetadata[];
+}
+
+export interface PolicyProposal {
+  profile: AgentProfile;
+  file: string;
+  summary: string;
+  yaml: string;
+  recommendedControls: ControlType[];
+  appliesTo: string[];
+}
+
+export interface PersonalAgentBaseline {
+  schemaVersion: "0.1";
+  createdAt: string;
+  profile: AgentProfile;
+  workspace: {
+    root: string;
+  };
+  understand: UnderstandResult;
+  policyProposal: PolicyProposal;
+}
+
+export interface SkillPermissionChange {
+  componentId: string;
+  label: string;
+  path?: string;
+  status: "added" | "removed";
+  capabilities: Capability[];
+  findings: Finding[];
+  riskChains: RiskChain[];
+}
+
+export interface PersonalAgentBaselineDiff {
+  schemaVersion: "0.1";
+  profile: AgentProfile;
+  workspace: {
+    root: string;
+  };
+  baselineCreatedAt: string;
+  newSkills: SkillPermissionChange[];
+  removedSkills: SkillPermissionChange[];
+  addedCapabilities: Finding[];
+  addedRiskChains: RiskChain[];
+  policyProposal: PolicyProposal;
+  agentPrompt: string;
+  summary: {
+    newSkillCount: number;
+    removedSkillCount: number;
+    addedCapabilityCount: number;
+    addedRiskChainCount: number;
+  };
 }

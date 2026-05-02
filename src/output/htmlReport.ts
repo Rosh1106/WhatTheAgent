@@ -84,7 +84,7 @@ export function renderHtmlReport(result: UnderstandResult): string {
     <section class="grid">
       ${metric("Skills", result.inventory.counts.skills)}
       ${metric("Scripts", result.inventory.counts.scripts)}
-      ${metric("Tool Servers", result.inventory.counts.toolServers)}
+      ${metric("MCP Servers", result.inventory.counts.toolServers)}
       ${metric("Capability Findings", result.inventory.counts.findings)}
       ${metric("Needs Attention", needsAttention.length)}
       ${metric("Expected", result.expected.length)}
@@ -102,7 +102,7 @@ export function renderHtmlReport(result: UnderstandResult): string {
     <table>
       <thead><tr><th>Name</th><th>Subtype</th><th>Source</th><th>Capabilities</th></tr></thead>
       <tbody>
-        ${toolServers.length === 0 ? `<tr><td colspan="4">No tool servers detected.</td></tr>` : toolServers.map((server) => `<tr><td>${escapeHtml(server.label)}</td><td>${server.subtype}</td><td><span class="path">${escapeHtml(server.path ?? "")}</span></td><td>${server.capabilities.map((capability) => `<span class="pill">${escapeHtml(capability)}</span>`).join("")}</td></tr>`).join("\n")}
+        ${toolServers.length === 0 ? `<tr><td colspan="4">No MCP servers detected.</td></tr>` : toolServers.map((server) => `<tr><td>${escapeHtml(server.label)}</td><td>${server.subtype}</td><td><span class="path">${escapeHtml(server.path ?? "")}</span></td><td>${server.capabilities.map((capability) => `<span class="pill">${escapeHtml(capability)}</span>`).join("")}</td></tr>`).join("\n")}
       </tbody>
     </table>
 

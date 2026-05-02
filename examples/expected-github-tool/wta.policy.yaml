@@ -11,7 +11,7 @@ expected:
 
 human_approval:
   required_for:
-    - tool_server_start
+    - mcp_server_start
 
 command_allowlist:
   commands:

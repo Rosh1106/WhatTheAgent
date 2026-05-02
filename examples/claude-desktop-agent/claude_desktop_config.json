@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "local-notes": {
+      "command": "node",
+      "args": [
+        "./tools/local-notes.js"
+      ],
+      "env": {},
+      "transport": "stdio"
+    }
+  }
+}

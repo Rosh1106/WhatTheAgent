@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "repo-context": {
+      "command": "node",
+      "args": [
+        "./tools/repo-context.js"
+      ],
+      "env": {},
+      "transport": "stdio"
+    }
+  }
+}

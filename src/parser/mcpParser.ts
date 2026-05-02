@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
-import type { Capability, Evidence, Finding, McpRiskFlag, McpServerComponent } from "../core/types.js";
+import type { AdapterMetadata, Capability, Evidence, Finding, McpRiskFlag, McpServerComponent } from "../core/types.js";
 import { classifyCapability } from "../risk/classifier.js";
 import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
 
@@ -18,7 +18,7 @@ interface RawMcpServer {
   transport?: unknown;
 }
 
-export async function parseMcpConfig(root: string, configFile: string, allowMcpExec = false): Promise<ParsedMcpConfig> {
+export async function parseMcpConfig(root: string, configFile: string, allowMcpExec = false, adapter?: AdapterMetadata): Promise<ParsedMcpConfig> {
   const raw = await fs.readFile(configFile, "utf8");
   const relPath = relativePath(root, configFile);
   const parsed = parseJsonc(raw) as unknown;
@@ -43,6 +43,9 @@ export async function parseMcpConfig(root: string, configFile: string, allowMcpE
       metadata: {
         configFile: relPath,
         serverName,
+        adapterId: adapter?.id,
+        adapterName: adapter?.name,
+        adapterSupportLevel: adapter?.supportLevel,
         command,
         args,
         env,

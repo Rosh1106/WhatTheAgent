@@ -90,6 +90,7 @@ export async function understandWorkspace(workspacePath: string, options: ScanOp
       workspaceRoot: ".",
       surfaces,
       toolServers,
+      compatibility: scan.compatibility,
       counts: {
         skills: scan.summary.componentsByType.skill,
         scripts: scan.summary.componentsByType.script,
@@ -318,15 +319,11 @@ function buildSurfaces(
   const toolServerById = new Map(toolServers.map((server) => [server.id, server]));
   const detected = controls.filter((control) => control.status === "detected").map((control) => control.type);
   return scan.components
-    .filter((component) => component.type === "skill" || component.type === "script" || component.type === "mcp_server")
+    .filter((component) => component.type === "skill" || component.type === "script" || component.type === "mcp_server" || component.type === "prompt" || component.type === "rule" || component.type === "memory" || component.type === "config")
     .map((component) => {
       const gaps = controlGaps.filter((gap) => gap.componentId === component.id).map((gap) => gap.id).sort();
       const chainIds = activeRiskChains.filter((chain) => chain.componentId === component.id).map((chain) => chain.id).sort();
-      const type: AgentSurface["type"] = component.type === "mcp_server"
-        ? "tool_server"
-        : component.type === "skill"
-          ? "skill"
-          : "script";
+      const type = surfaceType(component.type);
       const subtype = component.type === "mcp_server" ? "mcp_server" : undefined;
       const toolServer = toolServerById.get(component.id);
       return {
@@ -342,6 +339,25 @@ function buildSurfaces(
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function surfaceType(type: Component["type"]): AgentSurface["type"] {
+  switch (type) {
+    case "mcp_server":
+      return "tool_server";
+    case "skill":
+      return "skill";
+    case "script":
+      return "script";
+    case "prompt":
+      return "prompt";
+    case "rule":
+      return "rule";
+    case "memory":
+      return "memory";
+    default:
+      return "config";
+  }
 }
 
 function buildCapabilities(findings: Finding[], components: Component[]): NormalizedCapability[] {
@@ -588,7 +604,7 @@ function buildInventoryObservations(scan: ScanResult, toolServers: ToolServer[],
       category: "inventory",
       confidence: "high",
       impact: "informational",
-      message: `Tool server detected: ${server.label} (${server.subtype}).`,
+      message: `MCP server detected: ${server.label}.`,
       evidence: server.path ? [{ file: server.path, pattern: "tool_server" }] : []
     });
   }
@@ -735,7 +751,7 @@ function quickFixSteps(control: ControlType, component?: Component): string[] {
     case "secret_scoping":
       return ["Replace broad secrets with narrowly scoped tokens.", "Avoid loading credentials unless the component is explicitly invoked."];
     case "least_privilege_token":
-      return ["Review token permissions and reduce them to the minimum required scope.", "Prefer separate tokens per tool server or skill."];
+      return ["Review token permissions and reduce them to the minimum required scope.", "Prefer separate tokens per MCP server or skill."];
     case "network_restriction":
       return ["Restrict outbound network access to expected APIs.", "Log or require approval for new destinations."];
     case "read_only_filesystem":

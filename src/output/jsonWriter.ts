@@ -42,7 +42,7 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
     schemaVersion: result.schemaVersion,
     goal: "Help a coding agent make safe, reviewable changes that reduce meaningful agent capability/control gaps.",
     workspace: result.workspace,
-    workspaceSummary: `${result.inventory.counts.skills} skills, ${result.inventory.counts.toolServers} tool servers, ${result.inventory.counts.scripts} scripts, ${result.summary.controlGapCount} control gaps, ${result.riskChains.length} risk chains.`,
+    workspaceSummary: `${result.inventory.counts.skills} skills, ${result.inventory.counts.toolServers} MCP servers, ${result.inventory.counts.scripts} scripts, ${result.summary.controlGapCount} control gaps, ${result.riskChains.length} risk chains.`,
     needsAttention: [
       ...result.riskChains.map((chain) => ({
         id: chain.id,

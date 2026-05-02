@@ -77,7 +77,12 @@ export const skillInstructionPatterns: CapabilityPattern[] = [
   { capability: "agent_delegation", pattern: "delegate", regex: /\bdelegate\b/i },
   { capability: "agent_delegation", pattern: "subagent", regex: /\bsubagent\b/i },
   { capability: "agent_delegation", pattern: "another agent", regex: /\banother agent\b/i },
-  { capability: "agent_delegation", pattern: "handoff", regex: /\bhandoff\b/i }
+  { capability: "agent_delegation", pattern: "handoff", regex: /\bhandoff\b/i },
+  { capability: "payment", pattern: "payment", regex: /\bpayment\b/i },
+  { capability: "payment", pattern: "checkout", regex: /\bcheckout\b/i },
+  { capability: "payment", pattern: "refund", regex: /\brefund\b/i },
+  { capability: "order_placement", pattern: "order", regex: /\border\b/i },
+  { capability: "order_placement", pattern: "purchase", regex: /\bpurchase\b/i }
 ];
 
 export const scriptFilePattern = "**/scripts/**/*.{py,js,ts,sh}";

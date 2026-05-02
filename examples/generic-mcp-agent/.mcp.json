@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "notes-readonly": {
+      "command": "node",
+      "args": [
+        "./tools/notes-server.js"
+      ],
+      "env": {},
+      "transport": "stdio"
+    }
+  }
+}

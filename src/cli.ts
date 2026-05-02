@@ -2,18 +2,21 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Command } from "commander";
+import { availableAdapters } from "./adapters/index.js";
 import { planWorkspace } from "./core/planWorkspace.js";
+import { createPersonalAgentBaseline, diffPersonalAgentBaseline, starterPolicy, writePersonalBaselineOutputs, writePersonalDiffOutputs, writeStarterPolicy } from "./core/personalAgentBaseline.js";
 import { buildProbePlan } from "./core/probePlan.js";
 import { buildRuntimePlan } from "./core/runtimePlan.js";
 import { scanWorkspace } from "./core/scanWorkspace.js";
-import type { AgentPlanTarget, RuntimeMode, ScanResult } from "./core/types.js";
+import type { AgentPlanTarget, AgentProfile, RuntimeMode, ScanResult } from "./core/types.js";
 import { understandWorkspace } from "./core/understandWorkspace.js";
 import { diffScanFiles } from "./diff/diffEngine.js";
-import { formatAgentPlanSummary, formatDiffSummary, formatProbePlanSummary, formatRuntimePlanSummary, formatScanSummary, formatUnderstandSummary } from "./output/consoleFormatter.js";
+import { formatAgentPlanSummary, formatCompatibilitySummary, formatDiffSummary, formatProbePlanSummary, formatRuntimePlanSummary, formatScanSummary, formatUnderstandSummary } from "./output/consoleFormatter.js";
 import { renderFixPlan } from "./output/fixPlan.js";
 import { renderHtmlReport } from "./output/htmlReport.js";
 import { stableJson, writeJsonFile, writeScanOutputs, writeUnderstandOutputs } from "./output/jsonWriter.js";
 import { renderMarkdownReport } from "./output/markdownReport.js";
+import { formatPersonalBaselineDiffSummary, formatPersonalBaselineSummary } from "./output/personalAgentFormatter.js";
 
 interface GlobalOptions {
   json?: boolean;
@@ -27,6 +30,9 @@ interface GlobalOptions {
   forClaude?: boolean;
   ui?: boolean;
   mode?: RuntimeMode;
+  profile?: AgentProfile;
+  baseline?: string;
+  force?: boolean;
 }
 
 const program = new Command();
@@ -47,11 +53,12 @@ program
   .option("--no-color", "disable color output")
   .option("--quiet", "suppress stdout")
   .option("--output <dir>", "write understand outputs to a directory", ".wta")
+  .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
-      const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec });
+      const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile) });
       const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
       const filesWritten = await writeUnderstandOutputs(outputDir, result);
       if (options.quiet) return;
@@ -76,6 +83,71 @@ program
   });
 
 program
+  .command("baseline")
+  .argument("<workspace>", "personal-agent workspace to baseline")
+  .option("--profile <profile>", "personal-agent profile: personal-agent, openclaw, or hermes", "personal-agent")
+  .option("--json", "print deterministic baseline JSON")
+  .option("--no-color", "disable color output")
+  .option("--quiet", "suppress stdout")
+  .option("--output <dir>", "write baseline and policy proposal files", ".wta")
+  .action(async (workspace: string, options: GlobalOptions) => {
+    await handleErrors(async () => {
+      const profile = personalProfileOption(options.profile);
+      const baseline = await createPersonalAgentBaseline(workspace, profile);
+      const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
+      const filesWritten = await writePersonalBaselineOutputs(outputDir, baseline);
+      if (options.quiet) return;
+      process.stdout.write(options.json ? stableJson(baseline) : formatPersonalBaselineSummary(baseline, { filesWritten }));
+    });
+  });
+
+program
+  .command("diff-baseline")
+  .argument("<workspace>", "personal-agent workspace to compare with baseline")
+  .option("--baseline <file>", "baseline JSON file", ".wta/baseline.json")
+  .option("--profile <profile>", "override personal-agent profile")
+  .option("--json", "print deterministic baseline diff JSON")
+  .option("--no-color", "disable color output")
+  .option("--quiet", "suppress stdout")
+  .option("--output <dir>", "write baseline diff and policy proposal files", ".wta")
+  .action(async (workspace: string, options: GlobalOptions) => {
+    await handleErrors(async () => {
+      const baselineFile = path.resolve(workspace, options.baseline ?? ".wta/baseline.json");
+      const profile = options.profile ? personalProfileOption(options.profile) : undefined;
+      const diff = await diffPersonalAgentBaseline(workspace, baselineFile, profile);
+      const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
+      const filesWritten = await writePersonalDiffOutputs(outputDir, diff);
+      if (options.quiet) return;
+      process.stdout.write(options.json ? stableJson(diff) : formatPersonalBaselineDiffSummary(diff, { filesWritten }));
+    });
+  });
+
+program
+  .command("init-policy")
+  .argument("[workspace]", "workspace to initialize policy in", ".")
+  .option("--profile <profile>", "policy profile: personal-agent, openclaw, or hermes", "personal-agent")
+  .option("--json", "print policy payload as JSON")
+  .option("--no-color", "disable color output")
+  .option("--quiet", "suppress stdout")
+  .option("--output <file>", "write policy to this file")
+  .option("--force", "overwrite an existing policy file")
+  .action(async (workspace: string, options: GlobalOptions) => {
+    await handleErrors(async () => {
+      const profile = personalProfileOption(options.profile);
+      const outputFile = path.resolve(workspace, options.output ?? "wta.policy.yaml");
+      if (options.json) {
+        const payload = { schemaVersion: "0.1", profile, file: outputFile, yaml: starterPolicy(profile) };
+        if (options.output) await writeJsonFile(`${outputFile}.json`, payload);
+        if (!options.quiet) process.stdout.write(stableJson(payload));
+        return;
+      }
+      await writeStarterPolicy(outputFile, profile, Boolean(options.force));
+      if (options.quiet) return;
+      process.stdout.write(`WhatTheAgent policy starter written\n\n- ${outputFile}\n`);
+    });
+  });
+
+program
   .command("plan")
   .argument("<workspace>", "workspace to generate an implementation plan for")
   .option("--for-codex", "target the plan to Codex")
@@ -91,6 +163,24 @@ program
       if (options.output) await writeJsonFile(options.output, plan);
       if (options.quiet) return;
       process.stdout.write(options.json ? stableJson(plan) : formatAgentPlanSummary(plan));
+    });
+  });
+
+program
+  .command("compatibility")
+  .option("--json", "print deterministic compatibility JSON")
+  .option("--no-color", "disable color output")
+  .option("--quiet", "suppress stdout")
+  .option("--output <file>", "write compatibility JSON to a file")
+  .action(async (options: GlobalOptions) => {
+    await handleErrors(async () => {
+      const result = {
+        schemaVersion: "0.1",
+        adapters: availableAdapters()
+      };
+      if (options.output) await writeJsonFile(options.output, result);
+      if (options.quiet) return;
+      process.stdout.write(options.json ? stableJson(result) : formatCompatibilitySummary(result));
     });
   });
 
@@ -135,11 +225,12 @@ program
   .option("--no-color", "disable color output")
   .option("--quiet", "suppress stdout")
   .option("--output <file>", "write scan JSON plus graph and Markdown report")
+  .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
-      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec });
+      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile) });
       const filesWritten = options.output ? await writeScanOutputs(options.output, scan) : [];
       if (options.quiet) return;
       if (options.json) {
@@ -157,11 +248,12 @@ program
   .option("--no-color", "disable color output")
   .option("--quiet", "suppress stdout")
   .option("--output <file>", "write graph JSON")
+  .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
-      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec });
+      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile) });
       if (options.output) await writeJsonFile(options.output, scan.graph);
       if (options.quiet) return;
       if (options.json || !options.output) {
@@ -245,4 +337,18 @@ function planTarget(options: GlobalOptions): AgentPlanTarget {
 function runtimeMode(value: RuntimeMode | undefined): RuntimeMode {
   if (value === "observe" || value === "warn" || value === "approval" || value === "enforce") return value;
   throw new Error(`Invalid runtime mode: ${value}. Expected observe, warn, approval, or enforce.`);
+}
+
+function profileOption(value: AgentProfile | undefined): AgentProfile {
+  if (value === undefined) return "workspace";
+  if (value === "workspace" || value === "personal-agent" || value === "openclaw" || value === "hermes") return value;
+  throw new Error(`Invalid profile: ${value}. Expected workspace, personal-agent, openclaw, or hermes.`);
+}
+
+function personalProfileOption(value: AgentProfile | undefined): AgentProfile {
+  const profile = profileOption(value ?? "personal-agent");
+  if (profile === "workspace") {
+    throw new Error("Personal-agent commands require personal-agent, openclaw, or hermes profile.");
+  }
+  return profile;
 }

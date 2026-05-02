@@ -28,7 +28,7 @@ export function planFromUnderstand(understand: UnderstandResult, target: AgentPl
     instructions: targetInstructions(target),
     acceptanceCriteria: [
       "Keep all changes local-first and deterministic.",
-      "Do not execute untrusted scripts, tool servers, or agent code while implementing controls.",
+      "Do not execute untrusted scripts, MCP servers, or agent code while implementing controls.",
       "Prefer reviewable policy, allowlist, sandbox, and approval controls over deleting functionality.",
       "Run WhatTheAgent understand output after changes and confirm reduced control gaps."
     ],

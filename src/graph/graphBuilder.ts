@@ -82,6 +82,14 @@ function componentTypeToNodeType(type: Component["type"]): GraphNode["type"] {
       return "ToolServer";
     case "script":
       return "Script";
+    case "prompt":
+      return "Prompt";
+    case "rule":
+      return "Rule";
+    case "memory":
+      return "Config";
+    case "config":
+      return "Config";
     case "env_var":
       return "EnvVar";
     case "api_endpoint":

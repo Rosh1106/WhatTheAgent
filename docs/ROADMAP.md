@@ -28,6 +28,84 @@ Or:
 
 > A security workbench for understanding and hardening agent capabilities before they become production risk.
 
+## Audience paths
+
+WhatTheAgent should speak clearly to two related but different audiences.
+
+### Personal agents
+
+Examples:
+
+- OpenClaw
+- Hermes
+- local personal agents
+- custom skill folders
+- memory files
+- identity/persona files
+- scripts and MCP servers
+
+Positioning:
+
+> A capability map and safety checklist for personal AI agents.
+
+Personal-agent users want to know:
+
+- what skills, tools, memory, and identity files exist
+- which scripts can run
+- which MCP servers are available
+- which secrets or external services are referenced
+- what changed since the last scan
+- what Claude or Codex should fix
+
+Roadmap items:
+
+- initial `wta understand . --profile personal-agent`
+- initial `wta understand . --profile hermes`
+- initial `wta understand . --profile openclaw`
+- initial identity/persona/memory surface detection
+- initial `wta baseline . --profile hermes`
+- initial `wta diff-baseline . --profile hermes`
+- initial `wta init-policy . --profile hermes`
+- future background watch mode for new skills
+- future fail thresholds for new unsuppressed skills
+- `wta init-policy --profile hermes`
+- `wta init-policy --profile openclaw`
+
+### Workspace stations
+
+Examples:
+
+- Codex
+- Claude Code
+- Cursor
+- Kiro
+- Windsurf
+- VS Code agent workflows
+- team repositories
+- CI and pull requests
+
+Positioning:
+
+> A repo/workspace capability report for coding agents, with reviewable fix plans.
+
+Workspace-station users want to know:
+
+- did this PR add a new MCP server
+- did this PR add new capabilities
+- did this PR add secret access
+- did this PR add external send or network behavior
+- what controls are missing
+- what Codex or Claude Code should fix
+
+Roadmap items:
+
+- GitHub Actions workflow example
+- `.wta/summary.md`
+- `wta ci . --fail-on high --output .wta`
+- PR-comment friendly summaries
+- adapter compatibility metadata
+- `wta compatibility`
+
 ## Capability-first model
 
 The core abstraction should be capabilities, not protocols.
@@ -78,7 +156,7 @@ Generated output:
 The report should show:
 
 - Detected agent setup
-- Tool servers, including MCP servers
+- MCP servers
 - Skills, prompts, rules, scripts, and configs
 - Capabilities
 - Controls
@@ -107,25 +185,24 @@ Recommended UX sections:
 
 1. Landscape graph
 2. Capability table
-3. Tool server access map
+3. MCP server access map
 4. Controls coverage
 5. Control gaps
 6. Risk chains
 7. Fix center
 8. Agent instruction pack
 
-## Tool server handling
+## MCP server handling
 
-MCP servers should be shown, but not as the whole product category.
+MCP servers should be shown directly as MCP servers.
 
 Represent them as:
 
 ```text
-Tool server
-Subtype: MCP server
+MCP server
 ```
 
-For each tool server, show:
+For each MCP server, show:
 
 - Name
 - Source file
@@ -140,8 +217,7 @@ For each tool server, show:
 Example:
 
 ```text
-GitHub tool server
-Subtype: MCP server
+GitHub MCP server
 Capabilities:
 - read_repository
 - create_issue

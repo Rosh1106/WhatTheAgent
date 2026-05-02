@@ -1,15 +1,17 @@
 import path from "node:path";
-import type { Capability, Component, ComponentType, Finding, RiskLevel, ScanOptions, ScanResult, ScanSummary } from "./types.js";
+import type { AgentProfile, Capability, CompatibilityInfo, Component, ComponentType, Finding, RiskLevel, ScanOptions, ScanResult, ScanSummary } from "./types.js";
+import { availableAdapters } from "../adapters/index.js";
 import { buildGraph } from "../graph/graphBuilder.js";
 import { detectRiskChains } from "../risk/chainDetector.js";
 import { scanMcpConfigs } from "../scanner/mcpScanner.js";
+import { scanPersonalAgentSurfaces } from "../scanner/personalAgentScanner.js";
 import { scanSkills } from "../scanner/skillScanner.js";
 import { scanScript } from "../scanner/scriptScanner.js";
 import { findFiles } from "../utils/fileWalker.js";
 import { scriptFilePattern } from "../utils/patterns.js";
 import { relativePath, sortComponents, sortFindings, sortRiskChains } from "../utils/normalize.js";
 
-const componentTypes: ComponentType[] = ["skill", "mcp_server", "script", "env_var", "api_endpoint", "capability"];
+const componentTypes: ComponentType[] = ["skill", "mcp_server", "script", "prompt", "rule", "memory", "config", "env_var", "api_endpoint", "capability"];
 const capabilities: Capability[] = [
   "read_file",
   "write_file",
@@ -30,22 +32,26 @@ export async function scanWorkspace(workspacePath: string, options: ScanOptions 
   const root = path.resolve(workspacePath);
   const skillScan = await scanSkills(root);
   const mcpScan = await scanMcpConfigs(root, options.allowMcpExec);
+  const personalScan = await scanPersonalAgentSurfaces(root, options.profile);
   const standaloneScripts = await scanStandaloneScripts(root, new Set(skillScan.scripts.map((script) => script.component.path ?? "")));
 
   const components = sortComponents([
     ...skillScan.skills,
+    ...personalScan.components,
     ...skillScan.scripts.map((script) => script.component),
     ...standaloneScripts.map((script) => script.component),
     ...mcpScan.servers
   ]);
   const findings = sortFindings([
     ...skillScan.findings,
+    ...personalScan.findings,
     ...skillScan.scripts.flatMap((script) => script.findings),
     ...standaloneScripts.flatMap((script) => script.findings),
     ...mcpScan.findings
   ]);
   const riskChains = sortRiskChains(detectRiskChains(components, findings));
   const graph = buildGraph(path.basename(root) || root, components, findings, riskChains);
+  const compatibility = withProfileCompatibility(mcpScan.compatibility, options.profile, personalScan.components);
 
   return {
     schemaVersion: "0.1",
@@ -56,6 +62,7 @@ export async function scanWorkspace(workspacePath: string, options: ScanOptions 
     findings,
     riskChains,
     graph,
+    compatibility,
     summary: buildSummary(components, findings, riskChains)
   };
 }
@@ -90,5 +97,33 @@ function buildSummary(components: Component[], findings: Finding[], riskChains: 
     componentsByType,
     capabilities: capabilityCounts,
     riskChainsByRisk
+  };
+}
+
+function withProfileCompatibility(
+  compatibility: CompatibilityInfo,
+  profile: AgentProfile | undefined,
+  personalComponents: Component[]
+): CompatibilityInfo {
+  if ((profile !== "openclaw" && profile !== "hermes") || personalComponents.length === 0) {
+    return compatibility;
+  }
+
+  const adapter = availableAdapters().find((candidate) => candidate.id === profile);
+  if (!adapter || compatibility.detectedAdapters.some((detected) => detected.id === adapter.id)) {
+    return compatibility;
+  }
+
+  return {
+    ...compatibility,
+    detectedAdapters: [
+      ...compatibility.detectedAdapters,
+      {
+        id: adapter.id,
+        name: adapter.name,
+        supportLevel: adapter.supportLevel,
+        detectedFiles: personalComponents.map((component) => component.path).filter((file): file is string => Boolean(file)).sort()
+      }
+    ].sort((a, b) => a.name.localeCompare(b.name))
   };
 }
