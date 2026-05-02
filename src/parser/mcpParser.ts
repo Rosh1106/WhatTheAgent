@@ -1,9 +1,9 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
 import type { Capability, Evidence, Finding, McpRiskFlag, McpServerComponent, WellKnownClient } from "../core/types.js";
 import { classifyCapability } from "../risk/classifier.js";
-import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
+import { compactSnippet, redactedRecord, relativePath, stableId } from "../utils/normalize.js";
+import { readTextFileForScan } from "../utils/safeRead.js";
 
 export interface ParsedMcpConfig {
   servers: McpServerComponent[];
@@ -19,8 +19,26 @@ interface RawMcpServer {
 }
 
 export async function parseMcpConfig(root: string, configFile: string, allowMcpExec = false, client?: WellKnownClient): Promise<ParsedMcpConfig> {
-  const raw = await fs.readFile(configFile, "utf8");
   const relPath = relativePath(root, configFile);
+  const safeRead = await readTextFileForScan(configFile);
+  if (safeRead.skipped) {
+    return {
+      servers: [],
+      findings: [{
+        id: stableId("finding", `${relPath}-skipped-large-mcp-config`),
+        componentId: stableId("config", relPath),
+        capability: "read_file",
+        risk: "low",
+        evidence: {
+          file: relPath,
+          pattern: "skipped:large-file",
+          snippet: `Skipped MCP config larger than ${safeRead.skipped.maxBytes} bytes`
+        }
+      }]
+    };
+  }
+
+  const raw = safeRead.content ?? "";
   const parsed = parseJsonc(raw) as unknown;
   const serverEntries = extractServerEntries(parsed);
   const servers: McpServerComponent[] = [];
@@ -30,6 +48,7 @@ export async function parseMcpConfig(root: string, configFile: string, allowMcpE
     const command = readString(server.command);
     const args = readStringArray(server.args);
     const env = readStringRecord(server.env);
+    const redactedEnv = redactedRecord(env);
     const url = readString(server.url);
     const transport = readString(server.transport);
     const riskFlags = detectRiskFlags(command, args, env, url);
@@ -47,7 +66,7 @@ export async function parseMcpConfig(root: string, configFile: string, allowMcpE
         clientName: client?.name,
         command,
         args,
-        env,
+        env: redactedEnv,
         url,
         transport,
         riskFlags,
