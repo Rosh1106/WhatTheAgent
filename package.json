@@ -3,6 +3,28 @@
   "version": "0.1.0",
   "description": "Local-first capability discovery and governance CLI for AI agent workspaces.",
   "type": "module",
+  "license": "MIT",
+  "author": "Rosh1106",
+  "homepage": "https://github.com/Rosh1106/WhatTheAgent#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rosh1106/WhatTheAgent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Rosh1106/WhatTheAgent/issues"
+  },
+  "keywords": [
+    "ai-agent",
+    "agent-security",
+    "mcp",
+    "claude",
+    "codex",
+    "cursor",
+    "openclaw",
+    "hermes",
+    "security",
+    "cli"
+  ],
   "bin": {
     "whattheagent": "./dist/cli.js",
     "wta": "./dist/cli.js"
@@ -10,7 +32,10 @@
   "files": [
     "dist",
     "examples",
-    "README.md"
+    "readme",
+    "skills",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
@@ -20,7 +45,10 @@
     "understand:example": "tsx src/cli.ts understand examples/risky-agent",
     "plan:example": "tsx src/cli.ts plan examples/risky-agent --for-codex",
     "probe:example": "tsx src/cli.ts probe examples/risky-agent",
-    "typecheck": "tsc --noEmit"
+    "instructions:example": "tsx src/cli.ts instructions --for-claude",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run build",
+    "pack:dry-run": "npm pack --dry-run"
   },
   "dependencies": {
     "commander": "^12.1.0",
@@ -35,5 +63,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
