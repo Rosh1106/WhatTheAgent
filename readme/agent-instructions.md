@@ -10,25 +10,46 @@ Agent instructions are the onboarding layer.
 Scheduled checks are the continuous guardrail layer.
 ```
 
-Do not make the agent guess. The agent should run WhatTheAgent, read the generated evidence, propose safe guardrails, ask before changing anything, and validate afterwards.
+Do not make the agent guess. The agent should install or verify WhatTheAgent, run it, read the generated evidence, propose safe guardrails, ask before changing anything, and validate afterwards.
 
 ## The Simple Promise
 
 Paste this into your agent:
 
-> Use WhatTheAgent to baseline this workspace, show me what capabilities exist, suggest guardrails, ask before changing anything, validate after fixes, and check again whenever new skills or MCP servers are added.
+> Install or verify WhatTheAgent, baseline this workspace, show me what capabilities exist, suggest guardrails, ask before changing anything, validate after fixes, and check again whenever new skills or MCP servers are added.
 
-## Universal Copy-Paste Instruction
+## Install-Aware Universal Copy-Paste Instruction
 
-```md
+````md
 You are helping me manage this AI agent workspace safely using WhatTheAgent.
 
-Your job is to help me understand what this agent setup can do, what changed, and what guardrails should be added without breaking existing workflows.
+Your job is to install or verify WhatTheAgent, then use it to understand what this agent setup can do, what changed, and what guardrails should be added without breaking existing workflows.
+
+First check whether WhatTheAgent is already installed:
+
+```bash
+wta --help
+```
+
+If `wta` is not available, ask me for approval to install it globally, then run:
+
+```bash
+npm install -g whattheagent
+```
+
+Verify after installing:
+
+```bash
+wta --help
+whattheagent --help
+```
+
+Use `wta` for the rest of this routine. If global install is not allowed, tell me to install it manually with `npm install -g whattheagent` and then continue.
 
 Rules:
 - Do not execute untrusted scripts.
 - Do not start MCP servers.
-- Do not send network requests.
+- Do not send network requests except the npm install step if I approve it.
 - Do not print or expose secrets.
 - Do not delete skills, MCP servers, memory files, or identity files unless I explicitly approve.
 - Prefer adding approval, dry-run mode, allowlists, secret redaction, scoped tokens, logging, and policy documentation.
@@ -89,7 +110,7 @@ Then tell me:
 - what still needs attention
 - whether existing workflows appear preserved
 - what command should run daily or when new skills/MCP servers are added
-```
+````
 
 ## Generate Instructions From The CLI
 
