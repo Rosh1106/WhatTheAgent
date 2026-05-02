@@ -1,8 +1,8 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import type { SkillComponent } from "../core/types.js";
 import { relativePath, stableId } from "../utils/normalize.js";
+import { readTextFileForScan, skippedMetadata } from "../utils/safeRead.js";
 
 export interface ParsedSkill {
   component: SkillComponent;
@@ -12,13 +12,14 @@ export interface ParsedSkill {
 }
 
 export async function parseSkill(root: string, skillFile: string): Promise<ParsedSkill> {
-  const content = await fs.readFile(skillFile, "utf8");
+  const safeRead = await readTextFileForScan(skillFile);
+  const content = safeRead.content ?? "";
   const parsed = matter(content);
   const relPath = relativePath(root, skillFile);
   const directory = path.dirname(skillFile);
-  const name = readString(parsed.data.name) ?? path.basename(directory);
-  const description = readString(parsed.data.description);
-  const referencedFiles = extractReferencedFiles(parsed.content).sort();
+  const name = safeRead.skipped ? path.basename(directory) : readString(parsed.data.name) ?? path.basename(directory);
+  const description = safeRead.skipped ? undefined : readString(parsed.data.description);
+  const referencedFiles = safeRead.skipped ? [] : extractReferencedFiles(parsed.content).sort();
 
   return {
     component: {
@@ -29,14 +30,15 @@ export async function parseSkill(root: string, skillFile: string): Promise<Parse
       metadata: {
         name,
         description,
-        frontmatter: stableFrontmatter(parsed.data),
+        frontmatter: safeRead.skipped ? {} : stableFrontmatter(parsed.data),
         referencedFiles,
-        scripts: []
+        scripts: [],
+        ...(safeRead.skipped ? skippedMetadata(safeRead.skipped) : {})
       }
     },
-    body: parsed.content,
+    body: safeRead.skipped ? "" : parsed.content,
     directory,
-    bodyStartLine: getBodyStartLine(content)
+    bodyStartLine: safeRead.skipped ? 1 : getBodyStartLine(content)
   };
 }
 
