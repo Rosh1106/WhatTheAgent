@@ -21,6 +21,7 @@ Workspace-station users care about repo-local agent configs, MCP servers, script
 |---|---|---|
 | OpenClaw, Hermes, local personal agents, custom skill folders | [Personal Agents](./personal-agents.md) | A capability map and safety checklist for your personal agent setup |
 | Codex, Claude Code, Cursor, Kiro, Windsurf, VS Code, team repos | [Workspace Stations](./workspace-stations.md) | A repo/workspace capability report plus fix plans for coding agents |
+| I want to paste a safety routine into my agent | [Agent Instructions](./agent-instructions.md) | Copy-paste instructions and skill-style prompts for Claude, Codex, OpenClaw, and Hermes |
 | I want to know what clients and files are checked | [Compatibility](./compatibility.md) | Known agent clients, MCP config paths, and skills paths |
 
 ## Core Product Loop
@@ -52,7 +53,27 @@ Use the output this way:
 
 - Humans read `report.html` and the terminal summary.
 - Coding agents read `agent-context.json`, `fix-plan.md`, or `wta plan . --for-codex`.
+- Agents can be given a safety routine with `wta instructions --for-claude`, `--for-codex`, `--for-openclaw`, or `--for-hermes`.
 - CI and future MCP clients read deterministic JSON.
+
+## Agent Safety Routine
+
+The easy user story is:
+
+```text
+Paste this into your agent:
+Use WhatTheAgent to baseline this workspace, show me what capabilities exist, suggest guardrails, ask before changing anything, validate after fixes, and check again whenever new skills or MCP servers are added.
+```
+
+Generate the right instruction:
+
+```bash
+wta instructions
+wta instructions --for-claude
+wta instructions --for-codex
+wta instructions --for-openclaw
+wta instructions --for-hermes
+```
 
 ## Local-First Promise
 
