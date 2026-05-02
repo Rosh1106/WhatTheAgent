@@ -1,0 +1,51 @@
+name: WhatTheAgent
+
+description: Run WhatTheAgent to understand AI agent capabilities and upload local reports.
+
+author: Rosh1106
+
+inputs:
+  workspace:
+    description: Workspace path to scan.
+    required: false
+    default: .
+  output-dir:
+    description: Directory where WhatTheAgent should write outputs.
+    required: false
+    default: .wta
+  profile:
+    description: Workspace profile: workspace, personal-agent, openclaw, or hermes.
+    required: false
+    default: workspace
+  install-command:
+    description: Command used to install dependencies before building this action checkout.
+    required: false
+    default: npm ci
+  build-command:
+    description: Command used to build the CLI before running it.
+    required: false
+    default: npm run build
+  generate-instructions:
+    description: Whether to generate Codex instructions into the output directory.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install WhatTheAgent dependencies
+      shell: bash
+      run: ${{ inputs.install-command }}
+
+    - name: Build WhatTheAgent
+      shell: bash
+      run: ${{ inputs.build-command }}
+
+    - name: Understand agent workspace
+      shell: bash
+      run: node dist/cli.js understand "${{ inputs.workspace }}" --profile "${{ inputs.profile }}" --output "${{ inputs.output-dir }}" --json --no-color
+
+    - name: Generate Codex instructions
+      if: ${{ inputs.generate-instructions == 'true' }}
+      shell: bash
+      run: node dist/cli.js instructions --for-codex --output "${{ inputs.output-dir }}/codex-instructions.md"
