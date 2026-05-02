@@ -2,6 +2,8 @@
 
 Use WhatTheAgent in CI to understand whether a pull request changes what your agents can do.
 
+WhatTheAgent is now published on npm, so the recommended workflow installs the CLI directly from npm.
+
 The recommended first behavior is low-friction:
 
 - run WhatTheAgent
@@ -27,21 +29,35 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - run: npm install -g whattheagent
       - run: wta understand . --output .wta --json --no-color
+      - run: wta instructions --for-codex --output .wta/codex-instructions.md
       - uses: actions/upload-artifact@v4
         with:
           name: whattheagent-report
           path: .wta/
 ```
 
-Until the package is published to npm, use the source workflow below.
+## Composite Action
+
+This repository also includes `action.yml` so users can run WhatTheAgent as a GitHub Action after the repository is public:
+
+```yaml
+- uses: Rosh1106/WhatTheAgent@v0.1.0
+  with:
+    workspace: .
+    output-dir: .wta
+    profile: workspace
+```
+
+The composite action installs `whattheagent` from npm using `--ignore-scripts` and then runs `wta understand`.
 
 ## Source Checkout Workflow
 
+For local development of this repository itself, use the source workflow:
+
 ```yaml
-name: WhatTheAgent
+name: WhatTheAgent Source Check
 
 on:
   pull_request:
@@ -71,13 +87,13 @@ jobs:
 Generate a coding-agent prompt as an artifact:
 
 ```yaml
-- run: node dist/cli.js plan . --for-codex --output .wta/codex-plan.json
+- run: wta plan . --for-codex --output .wta/codex-plan.json
 ```
 
 Or write instructions:
 
 ```yaml
-- run: node dist/cli.js instructions --for-codex --output .wta/codex-instructions.md
+- run: wta instructions --for-codex --output .wta/codex-instructions.md
 ```
 
 ## Recommended CI Policy
@@ -113,6 +129,8 @@ wta ci . --fail-on high --output .wta
 ```
 
 Upload the full `.wta` directory as a workflow artifact.
+
+Review `.wta/` before making artifacts public. WhatTheAgent redacts secret-like values, but reports can still contain sensitive workspace metadata such as tool names, local paths, and external service names.
 
 ## Product Question CI Should Answer
 
