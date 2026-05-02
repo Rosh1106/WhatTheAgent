@@ -12,6 +12,7 @@ WhatTheAgent has two modes:
 |---|---|---|
 | Personal agents | OpenClaw, Hermes, local skills, memory, scripts, MCP servers | [Personal Agents](readme/personal-agents.md) |
 | Workspace stations | Codex, Claude Code, Cursor, Kiro, Windsurf, VS Code, team repos | [Workspace Stations](readme/workspace-stations.md) |
+| Agent instructions | Paste into Claude, Codex, OpenClaw, Hermes, or another agent | [Agent Instructions](readme/agent-instructions.md) |
 
 The full docs hub is in [readme/](readme/README.md).
 
@@ -21,6 +22,60 @@ Core loop:
 User understands and approves.
 Agent implements.
 WhatTheAgent verifies.
+```
+
+## Quick Start
+
+```bash
+wta understand . --output .wta
+```
+
+Then open:
+
+```text
+.wta/report.html
+```
+
+Ask your coding agent for a safe implementation plan:
+
+```bash
+wta plan . --for-codex
+wta plan . --for-claude
+```
+
+## Paste Into Your Agent
+
+Generate copy-paste instructions for the agent you use:
+
+```bash
+wta instructions
+wta instructions --for-claude
+wta instructions --for-codex
+wta instructions --for-openclaw
+wta instructions --for-hermes
+```
+
+The instruction tells the agent to:
+
+```text
+baseline the workspace
+show current capabilities
+suggest guardrails
+ask before changing anything
+validate after fixes
+check again when new skills or MCP servers are added
+```
+
+For personal agents, you can write a skill-style instruction file:
+
+```bash
+wta instructions --for-hermes --output skills/whattheagent-safety-check.skill.md
+```
+
+A ready-made example also lives at:
+
+```text
+skills/whattheagent-safety-check.skill.md
 ```
 
 ## Install
@@ -50,6 +105,7 @@ Core commands:
 ```bash
 wta understand . --output .wta
 wta compatibility
+wta instructions --for-claude
 wta plan . --for-codex
 wta graph . --json
 wta diff old.json new.json
@@ -116,6 +172,17 @@ wta compatibility
 wta compatibility --json
 ```
 
+## Continuous Check Loop
+
+For personal agents:
+
+```bash
+wta baseline . --profile personal-agent --output .wta
+wta diff-baseline . --profile personal-agent --output .wta
+```
+
+Run the diff daily, or whenever a new skill or MCP server is added. The agent instruction should summarize new capabilities and ask whether to accept them or add guardrails.
+
 ## Policy
 
 ```yaml
@@ -144,6 +211,7 @@ wta runtime . --mode observe
 npm run dev -- understand examples/risky-agent --output .wta
 npm run dev -- plan examples/risky-agent --for-codex
 npm run dev -- baseline examples/hermes-personal-agent --profile hermes --output .wta
+npm run dev -- instructions --for-claude
 ```
 
 The example workspace intentionally triggers:
