@@ -1,9 +1,9 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import type { Component, Finding } from "../core/types.js";
 import { classifyCapability } from "../risk/classifier.js";
 import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
 import { scriptPatterns } from "../utils/patterns.js";
+import { readTextFileForScan, skippedMetadata } from "../utils/safeRead.js";
 
 export interface ScriptScanResult {
   component: Component;
@@ -14,7 +14,38 @@ export async function scanScript(root: string, scriptPath: string, parentId?: st
   const relPath = relativePath(root, scriptPath);
   const label = path.basename(scriptPath);
   const componentId = stableId("script", relPath);
-  const content = await fs.readFile(scriptPath, "utf8");
+  const safeRead = await readTextFileForScan(scriptPath);
+  const component: Component = {
+    id: componentId,
+    type: "script",
+    label,
+    path: relPath,
+    parentId,
+    metadata: {
+      extension: path.extname(scriptPath),
+      parentId,
+      ...(safeRead.skipped ? skippedMetadata(safeRead.skipped) : {})
+    }
+  };
+
+  if (safeRead.skipped) {
+    return {
+      component,
+      findings: [{
+        id: stableId("finding", `${componentId}-skipped-large-file`),
+        componentId,
+        capability: "read_file",
+        risk: "low",
+        evidence: {
+          file: relPath,
+          pattern: "skipped:large-file",
+          snippet: `Skipped script larger than ${safeRead.skipped.maxBytes} bytes`
+        }
+      }]
+    };
+  }
+
+  const content = safeRead.content ?? "";
   const findings: Finding[] = [];
   const lines = content.split(/\r?\n/);
 
@@ -37,17 +68,7 @@ export async function scanScript(root: string, scriptPath: string, parentId?: st
   });
 
   return {
-    component: {
-      id: componentId,
-      type: "script",
-      label,
-      path: relPath,
-      parentId,
-      metadata: {
-        extension: path.extname(scriptPath),
-        parentId
-      }
-    },
+    component,
     findings
   };
 }
