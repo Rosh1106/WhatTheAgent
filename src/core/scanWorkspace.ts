@@ -10,6 +10,7 @@ import { scanScript } from "../scanner/scriptScanner.js";
 import { findFiles } from "../utils/fileWalker.js";
 import { scriptFilePattern } from "../utils/patterns.js";
 import { relativePath, sortComponents, sortFindings, sortRiskChains } from "../utils/normalize.js";
+import { applyFindingLifecycle } from "./findingLifecycle.js";
 
 const componentTypes: ComponentType[] = ["skill", "mcp_server", "script", "prompt", "rule", "memory", "config", "env_var", "api_endpoint", "capability"];
 const capabilities: Capability[] = [
@@ -42,13 +43,14 @@ export async function scanWorkspace(workspacePath: string, options: ScanOptions 
     ...standaloneScripts.map((script) => script.component),
     ...mcpScan.servers
   ]);
-  const findings = sortFindings([
+  const rawFindings = sortFindings([
     ...skillScan.findings,
     ...personalScan.findings,
     ...skillScan.scripts.flatMap((script) => script.findings),
     ...standaloneScripts.flatMap((script) => script.findings),
     ...mcpScan.findings
   ]);
+  const findings = sortFindings(applyFindingLifecycle(rawFindings, components));
   const riskChains = sortRiskChains(detectRiskChains(components, findings));
   const graph = buildGraph(path.basename(root) || root, components, findings, riskChains);
   const compatibility = withProfileCompatibility(mcpScan.compatibility, options.profile, personalScan.components);
