@@ -12,6 +12,7 @@ import type { AgentPlanTarget, AgentProfile, RuntimeMode, ScanResult } from "./c
 import { understandWorkspace } from "./core/understandWorkspace.js";
 import { diffScanFiles } from "./diff/diffEngine.js";
 import { formatAgentPlanSummary, formatCompatibilitySummary, formatDiffSummary, formatProbePlanSummary, formatRuntimePlanSummary, formatScanSummary, formatUnderstandSummary } from "./output/consoleFormatter.js";
+import { renderAgentInstructions, type AgentInstructionTarget } from "./output/agentInstructions.js";
 import { renderFixPlan } from "./output/fixPlan.js";
 import { renderHtmlReport } from "./output/htmlReport.js";
 import { stableJson, writeJsonFile, writeScanOutputs, writeUnderstandOutputs } from "./output/jsonWriter.js";
@@ -28,6 +29,8 @@ interface GlobalOptions {
   forAgent?: boolean;
   forCodex?: boolean;
   forClaude?: boolean;
+  forOpenclaw?: boolean;
+  forHermes?: boolean;
   ui?: boolean;
   mode?: RuntimeMode;
   profile?: AgentProfile;
@@ -163,6 +166,27 @@ program
       if (options.output) await writeJsonFile(options.output, plan);
       if (options.quiet) return;
       process.stdout.write(options.json ? stableJson(plan) : formatAgentPlanSummary(plan));
+    });
+  });
+
+program
+  .command("instructions")
+  .description("print copy-paste instructions for agents to run WhatTheAgent safely")
+  .option("--for-claude", "print Claude-focused instructions")
+  .option("--for-codex", "print Codex-focused instructions")
+  .option("--for-openclaw", "print OpenClaw skill-style instructions")
+  .option("--for-hermes", "print Hermes skill-style instructions")
+  .option("--json", "print deterministic instruction JSON")
+  .option("--no-color", "disable color output")
+  .option("--quiet", "suppress stdout")
+  .option("--output <file>", "write instructions to a file")
+  .action(async (options: GlobalOptions) => {
+    await handleErrors(async () => {
+      const target = instructionTarget(options);
+      const instructions = renderAgentInstructions(target);
+      if (options.output) await fs.writeFile(options.output, instructions, "utf8");
+      if (options.quiet) return;
+      process.stdout.write(options.json ? stableJson({ schemaVersion: "0.1", target, instructions }) : instructions);
     });
   });
 
@@ -332,6 +356,14 @@ function printMcpExecReserved(options: GlobalOptions): void {
 function planTarget(options: GlobalOptions): AgentPlanTarget {
   if (options.forCodex) return "codex";
   if (options.forClaude) return "claude";
+  return "generic";
+}
+
+function instructionTarget(options: GlobalOptions): AgentInstructionTarget {
+  if (options.forCodex) return "codex";
+  if (options.forClaude) return "claude";
+  if (options.forOpenclaw) return "openclaw";
+  if (options.forHermes) return "hermes";
   return "generic";
 }
 
