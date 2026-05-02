@@ -54,5 +54,24 @@ export function uniqueCapabilities(findings: Finding[]): Capability[] {
 }
 
 export function compactSnippet(line: string): string {
-  return line.trim().replace(/\s+/g, " ").slice(0, 160);
+  return redactSecrets(line).trim().replace(/\s+/g, " ").slice(0, 160);
+}
+
+export function redactSecrets(value: string): string {
+  return value
+    .replace(/\b(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|GITHUB_TOKEN|GH_TOKEN|OPENAI_API_KEY|ANTHROPIC_API_KEY|STRIPE_SECRET_KEY|DATABASE_URL)\b\s*[:=]\s*['\"]?[^'\"\s,}]+/gi, "$1=[redacted]")
+    .replace(/\b(api[_-]?key|token|secret|password|authorization|bearer|private[_-]?key|database_url)\b(\s*[:=]\s*)['\"]?[^'\"\s,}]+/gi, "$1$2[redacted]")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, "Bearer [redacted]")
+    .replace(/\b(sk|pk)_(live|test)_[A-Za-z0-9_]+\b/g, "[redacted-stripe-key]")
+    .replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, "[redacted-openai-key]")
+    .replace(/\bgh[pousr]_[A-Za-z0-9_]{12,}\b/g, "[redacted-github-token]")
+    .replace(/\b[a-zA-Z0-9+/]{32,}={0,2}\b/g, "[redacted-high-entropy]");
+}
+
+export function redactedRecord(values: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.keys(values)
+      .sort((left, right) => left.localeCompare(right))
+      .map((key) => [key, "[redacted]"])
+  );
 }
