@@ -4,6 +4,7 @@ import type { CapabilityGraph, ScanResult, UnderstandResult } from "../core/type
 import { renderFixPlan } from "./fixPlan.js";
 import { renderHtmlReport } from "./htmlReport.js";
 import { renderMarkdownReport } from "./markdownReport.js";
+import { renderVisualChainsSvg } from "./visualChainsSvg.js";
 
 export function stableJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
@@ -33,6 +34,7 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
   const graphFile = path.join(resolvedDir, "capability-graph.json");
   const fixPlanFile = path.join(resolvedDir, "fix-plan.md");
   const htmlFile = path.join(resolvedDir, "report.html");
+  const visualChainsFile = path.join(resolvedDir, "visual-chains.svg");
   const agentContextFile = path.join(resolvedDir, "agent-context.json");
 
   await fs.mkdir(resolvedDir, { recursive: true });
@@ -73,8 +75,9 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
   });
   await fs.writeFile(fixPlanFile, renderFixPlan(result), "utf8");
   await fs.writeFile(htmlFile, renderHtmlReport(result), "utf8");
+  await fs.writeFile(visualChainsFile, renderVisualChainsSvg(result), "utf8");
 
-  return [understandFile, graphFile, fixPlanFile, htmlFile, agentContextFile];
+  return [understandFile, graphFile, fixPlanFile, htmlFile, visualChainsFile, agentContextFile];
 }
 
 function stripJsonExtension(filePath: string): string {
