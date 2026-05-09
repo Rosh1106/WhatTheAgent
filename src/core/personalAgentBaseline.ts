@@ -128,6 +128,16 @@ export function starterPolicy(profile: AgentProfile): string {
   return renderPolicyYaml(profile, []);
 }
 
+export async function seededPolicyFromScan(workspacePath: string, profile: AgentProfile): Promise<{ yaml: string; expectedCount: number }> {
+  const understand = await understandWorkspace(workspacePath, { profile: isPersonalProfile(profile) ? profile : undefined });
+  const entries = expectedPolicyEntries(understand.scan.findings);
+  return { yaml: renderPolicyYaml(profile, entries), expectedCount: entries.length };
+}
+
+function isPersonalProfile(profile: AgentProfile | undefined): profile is AgentProfile {
+  return profile === "personal-agent" || profile === "openclaw" || profile === "hermes";
+}
+
 export async function writePersonalBaselineOutputs(outputDir: string, baseline: PersonalAgentBaseline): Promise<string[]> {
   const resolvedDir = path.resolve(outputDir);
   const baselineFile = path.join(resolvedDir, "baseline.json");
@@ -153,22 +163,15 @@ export async function writePersonalDiffOutputs(outputDir: string, diff: Personal
 }
 
 export async function writeStarterPolicy(filePath: string, profile: AgentProfile, force = false): Promise<void> {
-  let exists = false;
-  try {
-    await fs.stat(filePath);
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      exists = false;
-    } else {
-      throw error;
-    }
-  }
-  exists = exists || await fileExists(filePath);
-  if (exists && !force) {
+  await writePolicyContent(filePath, starterPolicy(profile), force);
+}
+
+export async function writePolicyContent(filePath: string, yaml: string, force = false): Promise<void> {
+  if (await fileExists(filePath) && !force) {
     throw new Error(`${filePath} already exists. Use --force to overwrite it.`);
   }
   await fs.mkdir(path.dirname(path.resolve(filePath)), { recursive: true });
-  await fs.writeFile(filePath, starterPolicy(profile), "utf8");
+  await fs.writeFile(filePath, yaml, "utf8");
 }
 
 async function fileExists(filePath: string): Promise<boolean> {

@@ -4,7 +4,8 @@ import path from "node:path";
 import { Command } from "commander";
 import { wellKnownClients } from "./clients/wellKnownClients.js";
 import { planWorkspace } from "./core/planWorkspace.js";
-import { createPersonalAgentBaseline, diffPersonalAgentBaseline, starterPolicy, writePersonalBaselineOutputs, writePersonalDiffOutputs, writeStarterPolicy } from "./core/personalAgentBaseline.js";
+import { ackInPolicy } from "./core/ackPolicy.js";
+import { createPersonalAgentBaseline, diffPersonalAgentBaseline, seededPolicyFromScan, starterPolicy, writePersonalBaselineOutputs, writePersonalDiffOutputs, writePolicyContent } from "./core/personalAgentBaseline.js";
 import { buildProbePlan } from "./core/probePlan.js";
 import { buildRuntimePlan } from "./core/runtimePlan.js";
 import { scanWorkspace } from "./core/scanWorkspace.js";
@@ -37,6 +38,11 @@ interface GlobalOptions {
   baseline?: string;
   force?: boolean;
   exclude?: string[];
+  open?: boolean;
+  fromScan?: boolean;
+  reason?: string;
+  policy?: string;
+  workspace?: string;
 }
 
 function collectExclude(value: string, previous: string[] = []): string[] {
@@ -64,12 +70,14 @@ program
   .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
   .option("--exclude <pattern>", "extra glob pattern to ignore (repeatable, comma-separated)", collectExclude, [])
+  .option("--open", "open the rendered HTML report in the default browser")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
       const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile), excludePatterns: options.exclude });
       const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
       const filesWritten = await writeUnderstandOutputs(outputDir, result);
+      if (options.open) await openInBrowser(path.join(outputDir, "report.html"));
       if (options.quiet) return;
       if (options.ui) {
         process.stdout.write(`WhatTheAgent UI bundle written\n\n- ${path.join(outputDir, "report.html")}\n`);
@@ -140,19 +148,66 @@ program
   .option("--quiet", "suppress stdout")
   .option("--output <file>", "write policy to this file")
   .option("--force", "overwrite an existing policy file")
+  .option("--from-scan", "scan the workspace and pre-populate expected[] entries for every detected capability")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       const profile = personalProfileOption(options.profile);
       const outputFile = path.resolve(workspace, options.output ?? "wta.policy.yaml");
+      const seeded = options.fromScan ? await seededPolicyFromScan(workspace, profile) : undefined;
+      const yaml = seeded?.yaml ?? starterPolicy(profile);
       if (options.json) {
-        const payload = { schemaVersion: "0.1", profile, file: outputFile, yaml: starterPolicy(profile) };
+        const payload = { schemaVersion: "0.1", profile, file: outputFile, yaml, expectedCount: seeded?.expectedCount ?? 0 };
         if (options.output) await writeJsonFile(`${outputFile}.json`, payload);
         if (!options.quiet) process.stdout.write(stableJson(payload));
         return;
       }
-      await writeStarterPolicy(outputFile, profile, Boolean(options.force));
+      await writePolicyContent(outputFile, yaml, Boolean(options.force));
       if (options.quiet) return;
-      process.stdout.write(`WhatTheAgent policy starter written\n\n- ${outputFile}\n`);
+      const seedNote = seeded ? ` (${seeded.expectedCount} expected entries seeded from scan)` : "";
+      process.stdout.write(`WhatTheAgent policy written${seedNote}\n\n- ${outputFile}\n`);
+    });
+  });
+
+program
+  .command("ack")
+  .argument("<component>", "component id to acknowledge (e.g. mcp.burp or skill.invoice-review)")
+  .argument("[capability]", "optional capability (e.g. execute_code). If omitted, all detected capabilities are acknowledged.")
+  .option("--reason <text>", "required justification recorded in the policy entry")
+  .option("--policy <file>", "policy file to update", "wta.policy.yaml")
+  .option("--workspace <dir>", "workspace to scan when resolving capabilities", ".")
+  .option("--json", "print result as JSON")
+  .option("--quiet", "suppress stdout")
+  .action(async (component: string, capability: string | undefined, options: GlobalOptions) => {
+    await handleErrors(async () => {
+      if (!options.reason || !options.reason.trim()) {
+        throw new Error("--reason is required to record why this capability is acknowledged.");
+      }
+      const workspaceRoot = path.resolve(options.workspace ?? ".");
+      const policyFile = path.resolve(workspaceRoot, options.policy ?? "wta.policy.yaml");
+      const result = await ackInPolicy({
+        workspaceRoot,
+        policyFile,
+        componentId: component,
+        capability: capability as never,
+        reason: options.reason
+      });
+      if (options.quiet) return;
+      if (options.json) {
+        process.stdout.write(stableJson(result));
+        return;
+      }
+      const lines = [
+        result.added.length > 0
+          ? `Added ${result.added.length} expected ${result.added.length === 1 ? "entry" : "entries"} to ${policyFile}`
+          : `No new entries added to ${policyFile} (already up to date)`,
+        ""
+      ];
+      for (const entry of result.added) lines.push(`+ ${entry.componentId} · ${entry.capability}`);
+      for (const entry of result.alreadyPresent) lines.push(`= ${entry.componentId} · ${entry.capability} (already in policy)`);
+      if (!result.componentExists && result.added.length > 0) {
+        lines.push("", `Note: component "${component}" was not found in the current scan; the entry was added anyway.`);
+      }
+      process.stdout.write(`${lines.join("\n")}\n`);
     });
   });
 
@@ -359,6 +414,19 @@ async function handleErrors(action: () => Promise<void>): Promise<void> {
 function printMcpExecReserved(options: GlobalOptions): void {
   if (options.quiet) return;
   process.stderr.write("MCP execution mode is reserved for a future version.\n");
+}
+
+async function openInBrowser(filePath: string): Promise<void> {
+  const { spawn } = await import("node:child_process");
+  const platform = process.platform;
+  const command = platform === "darwin" ? "open" : platform === "win32" ? "explorer.exe" : "xdg-open";
+  try {
+    const child = spawn(command, [filePath], { detached: true, stdio: "ignore" });
+    child.on("error", () => {});
+    child.unref();
+  } catch {
+    process.stderr.write(`Could not open ${filePath} automatically.\n`);
+  }
 }
 
 function planTarget(options: GlobalOptions): AgentPlanTarget {

@@ -243,6 +243,27 @@ wta understand . --exclude vendor,scratch,**/build/**
 
 `--exclude` is repeatable, comma-separated, and accepts either a bare directory name (auto-wrapped to `**/<name>/**`) or any glob. Defaults already skip `node_modules`, `dist`, `.venv`, `__pycache__`, `.claude/plugins/marketplaces`, `.claude/plugins/cache`, and similar caches.
 
+Open the rendered HTML report directly after a scan:
+
+```bash
+wta understand . --open
+```
+
+## Acknowledge intentional capabilities
+
+After your first scan, expect to see entries that are powerful but intentional (Burp MCP, GitHub MCP, your CI release script). Two ways to move them out of *Needs attention* and into *Expected*:
+
+```bash
+# Bulk: scan once and seed wta.policy.yaml with every detected capability as expected.
+wta init-policy . --from-scan --profile personal-agent
+
+# Targeted: ack a single component (or a single capability of one).
+wta ack mcp.burp execute_code --reason "Burp Suite, security testing tool"
+wta ack mcp.github --reason "Read-only GitHub MCP, approved"
+```
+
+Without an explicit capability, `wta ack` reads the current scan and acknowledges every capability that component has. Re-running an ack is a no-op — duplicates are detected by `(component, capability)`.
+
 `understand` writes:
 
 ```text
