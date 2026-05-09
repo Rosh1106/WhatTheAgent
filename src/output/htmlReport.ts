@@ -1,161 +1,231 @@
-import type { UnderstandResult } from "../core/types.js";
+import type { ControlGap, Observation, RiskChain, RiskLevel, UnderstandResult } from "../core/types.js";
+import { renderVisualChainsSvg } from "./visualChainsSvg.js";
 
 export function renderHtmlReport(result: UnderstandResult): string {
+  const visualSvg = renderVisualChainsSvg(result).replace(/^<\?xml[^?]*\?>\s*/, "");
+  const riskChains = result.riskChains.slice();
+  const meaningfulGaps = result.controlGaps.filter((gap) => gap.impact === "fix_required" || gap.impact === "fix_recommended");
+  const expected = result.expected.slice(0, 50);
+  const informational = result.observations.filter((observation) => observation.impact === "informational").slice(0, 50);
   const topCapabilities = result.capabilities
     .slice()
-    .sort((a, b) => b.count - a.count || a.capability.localeCompare(b.capability))
+    .sort((a, b) => riskRank(b.risk) - riskRank(a.risk) || b.count - a.count || a.capability.localeCompare(b.capability))
     .slice(0, 12);
-  const riskChains = result.riskChains.slice(0, 25);
   const toolServers = result.inventory.toolServers;
-  const needsAttention = [
-    ...result.riskChains.map((chain) => ({
-      kind: "Risk chain",
-      title: chain.name,
-      componentId: chain.componentId,
-      risk: chain.risk,
-      message: chain.message,
-      capabilities: chain.capabilities
-    })),
-    ...result.controlGaps.map((gap) => ({
-      kind: "Control gap",
-      title: gap.control.replace(/_/g, " "),
-      componentId: gap.componentId,
-      risk: gap.risk,
-      message: gap.message,
-      capabilities: []
-    }))
-  ].slice(0, 50);
-  const normalObservations = result.observations.filter((observation) => observation.impact === "informational").slice(0, 50);
-  const planText = [
-    "wta plan . --for-codex",
-    "",
-    "Focus on the Needs Attention section first.",
-    "Preserve expected capabilities and add reviewable controls instead of deleting tools."
-  ].join("\n");
+  const counts = {
+    risk: riskChains.length,
+    attention: meaningfulGaps.length,
+    expected: expected.length,
+    informational: informational.length
+  };
 
   return `<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WhatTheAgent Understand Report</title>
-  <style>
-    :root { color-scheme: light; --ink:#172026; --muted:#60717d; --line:#d9e1e6; --panel:#f7f9fa; --accent:#0f766e; --risk:#b42318; --warn:#9a5b00; --ok:#087443; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:var(--ink); background:#ffffff; }
-    header { padding:32px 40px 20px; border-bottom:1px solid var(--line); }
-    main { padding:28px 40px 48px; max-width:1180px; }
-    h1 { margin:0 0 8px; font-size:30px; letter-spacing:0; }
-    h2 { margin:32px 0 12px; font-size:18px; letter-spacing:0; }
-    p { color:var(--muted); margin:0; line-height:1.5; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; }
-    .card { border:1px solid var(--line); border-radius:8px; padding:14px 16px; background:var(--panel); }
-    .metric { font-size:28px; font-weight:700; }
-    .label { color:var(--muted); font-size:13px; margin-top:4px; }
-    table { width:100%; border-collapse:collapse; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
-    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
-    th { background:var(--panel); font-size:13px; color:#33444f; }
-    tr:last-child td { border-bottom:0; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; background:#eef3f5; padding:2px 5px; border-radius:4px; }
-    .risk-critical { color:var(--risk); font-weight:700; }
-    .risk-high { color:var(--warn); font-weight:700; }
-    .risk-medium { color:#5b6470; font-weight:700; }
-    .risk-low { color:#5b6470; font-weight:700; }
-    .path { color:var(--muted); font-size:12px; }
-    .pill { display:inline-block; margin:2px 4px 2px 0; padding:2px 7px; border:1px solid var(--line); border-radius:999px; font-size:12px; background:#fff; }
-    .lead { max-width:760px; }
-    .callout { border-left:4px solid var(--accent); background:#f1f8f7; padding:14px 16px; margin:18px 0 4px; border-radius:6px; }
-    .empty { color:var(--ok); font-weight:600; }
-    pre { white-space:pre-wrap; border:1px solid var(--line); background:#111827; color:#f9fafb; border-radius:8px; padding:14px 16px; overflow:auto; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatTheAgent · ${escapeHtml(result.workspace.root)}</title>
+<style>${styles()}</style>
 </head>
 <body>
-  <header>
-    <h1>WhatTheAgent Understand Report</h1>
-    <p class="lead">What your agent can do, what needs attention, what is expected, and what a coding agent should fix next.</p>
-    <div class="callout">
-      ${needsAttention.length === 0
-        ? `<strong class="empty">No urgent capability risks detected.</strong> Normal tool capabilities are listed as observations.`
-        : `<strong>${needsAttention.length} item${needsAttention.length === 1 ? "" : "s"} need attention.</strong> Prioritize risk chains first, then missing controls.`
+<header class="hero">
+  <div class="hero-row">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">W</span>
+      <div>
+        <div class="brand-name">WhatTheAgent</div>
+        <div class="brand-path">${escapeHtml(result.workspace.root)}</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="#risk">Risk chains</a>
+      <a href="#attention">Needs attention</a>
+      <a href="#expected">Expected</a>
+      <a href="#inventory">Inventory</a>
+    </nav>
+  </div>
+  <div class="status-strip" role="status">
+    ${statusPill("crit", counts.risk, "risk chain", "risk chains")}
+    ${statusPill("warn", counts.attention, "needs attention", "need attention")}
+    ${statusPill("ok", counts.expected, "acknowledged", "acknowledged")}
+    ${statusPill("info", result.inventory.counts.findings, "inventory finding", "inventory findings")}
+  </div>
+  <div class="hero-headline">
+    ${counts.risk === 0 && counts.attention === 0
+      ? `<h1>No urgent capability risks.</h1><p>Static local scan completed. Capabilities below are inventory only.</p>`
+      : `<h1>${headlinePhrase(counts.risk, counts.attention)}</h1><p>Address risk chains first; review the needs-attention items, then ack the rest in policy.</p>`
+    }
+  </div>
+</header>
+
+<main>
+  ${riskChains.length > 0 ? `
+  <section id="risk" class="tier tier-crit">
+    <div class="tier-head">
+      <span class="tier-tag">Risk chain</span>
+      <h2>Investigate now</h2>
+      <p>Specific combinations whose blast radius is bigger than the parts.</p>
+    </div>
+    <div class="visual-wrap" aria-hidden="true">${visualSvg}</div>
+    <div class="cards">
+      ${riskChains.map(renderChainCard).join("")}
+    </div>
+  </section>` : ""}
+
+  <section id="attention" class="tier tier-warn">
+    <div class="tier-head">
+      <span class="tier-tag">Needs attention</span>
+      <h2>Decide once, move on</h2>
+      <p>Powerful capabilities that may be intentional. Approve in policy or scope them down.</p>
+    </div>
+    <div class="cards">
+      ${meaningfulGaps.length === 0
+        ? `<div class="empty">No actionable control gaps.</div>`
+        : meaningfulGaps.slice(0, 25).map(renderGapCard).join("")
       }
     </div>
-  </header>
-  <main>
-    <section class="grid">
+  </section>
+
+  ${expected.length > 0 ? `
+  <section id="expected" class="tier tier-ok">
+    <div class="tier-head">
+      <span class="tier-tag">Expected</span>
+      <h2>Acknowledged in policy</h2>
+      <p>Capabilities you've already approved. Only changes will reappear.</p>
+    </div>
+    <div class="cards">
+      ${expected.map(renderObservationCard).join("")}
+    </div>
+  </section>` : ""}
+
+  <section id="inventory" class="tier tier-info">
+    <div class="tier-head">
+      <span class="tier-tag">Inventory</span>
+      <h2>Detected setup</h2>
+      <p>What WhatTheAgent found in your workspace.</p>
+    </div>
+    <div class="metric-grid">
       ${metric("Skills", result.inventory.counts.skills)}
       ${metric("Scripts", result.inventory.counts.scripts)}
       ${metric("MCP Servers", result.inventory.counts.toolServers)}
-      ${metric("Capability Findings", result.inventory.counts.findings)}
-      ${metric("Needs Attention", needsAttention.length)}
-      ${metric("Expected", result.expected.length)}
-    </section>
+      ${metric("Findings", result.inventory.counts.findings)}
+    </div>
 
-    <h2>What Your Agent Can Do</h2>
+    <h3>Capabilities</h3>
     <table>
-      <thead><tr><th>Capability</th><th>Impact</th><th>Confidence</th><th>Risk</th><th>Findings</th></tr></thead>
+      <thead><tr><th>Capability</th><th>Risk</th><th>Findings</th><th>Confidence</th></tr></thead>
       <tbody>
-        ${topCapabilities.length === 0 ? `<tr><td colspan="5">No capabilities detected.</td></tr>` : topCapabilities.map((capability) => `<tr><td><code>${escapeHtml(capability.capability)}</code></td><td>${escapeHtml(capability.impact ?? "informational")}</td><td>${escapeHtml(capability.confidence ?? "medium")}</td><td class="risk-${capability.risk}">${capability.risk}</td><td>${capability.count}</td></tr>`).join("\n")}
+      ${topCapabilities.length === 0
+        ? `<tr><td colspan="4">No capabilities detected.</td></tr>`
+        : topCapabilities.map((cap) => `<tr><td><code>${escapeHtml(cap.capability)}</code></td><td><span class="risk-pill risk-${cap.risk}">${cap.risk}</span></td><td>${cap.count}</td><td>${escapeHtml(cap.confidence ?? "medium")}</td></tr>`).join("")
+      }
       </tbody>
     </table>
 
-    <h2>Agent Landscape</h2>
+    <h3>MCP servers</h3>
     <table>
-      <thead><tr><th>Name</th><th>Subtype</th><th>Source</th><th>Capabilities</th></tr></thead>
+      <thead><tr><th>Name</th><th>Source</th><th>Capabilities</th></tr></thead>
       <tbody>
-        ${toolServers.length === 0 ? `<tr><td colspan="4">No MCP servers detected.</td></tr>` : toolServers.map((server) => `<tr><td>${escapeHtml(server.label)}</td><td>${server.subtype}</td><td><span class="path">${escapeHtml(server.path ?? "")}</span></td><td>${server.capabilities.map((capability) => `<span class="pill">${escapeHtml(capability)}</span>`).join("")}</td></tr>`).join("\n")}
+      ${toolServers.length === 0
+        ? `<tr><td colspan="3">No MCP servers detected.</td></tr>`
+        : toolServers.map((server) => `<tr><td><strong>${escapeHtml(server.label)}</strong></td><td><span class="path">${escapeHtml(server.path ?? "")}</span></td><td>${server.capabilities.map((cap) => `<span class="cap-pill">${escapeHtml(cap)}</span>`).join("")}</td></tr>`).join("")
+      }
       </tbody>
     </table>
 
-    <h2>Needs Attention</h2>
-    <table>
-      <thead><tr><th>Risk</th><th>Type</th><th>Component</th><th>Why</th><th>Capabilities</th></tr></thead>
-      <tbody>
-        ${needsAttention.length === 0 ? `<tr><td colspan="5">No high-risk chains or actionable control gaps detected.</td></tr>` : needsAttention.map((item) => `<tr><td class="risk-${item.risk}">${item.risk}</td><td>${escapeHtml(item.kind)}: ${escapeHtml(item.title)}</td><td><code>${escapeHtml(item.componentId)}</code></td><td>${escapeHtml(item.message)}</td><td>${item.capabilities.map((capability) => `<span class="pill">${escapeHtml(capability)}</span>`).join("")}</td></tr>`).join("\n")}
-      </tbody>
-    </table>
+    ${informational.length > 0 ? `
+    <h3>Normal observations</h3>
+    <ul class="obs-list">
+      ${informational.map((obs) => `<li><code>${escapeHtml(obs.componentId)}</code> · ${escapeHtml(obs.message)}</li>`).join("")}
+    </ul>` : ""}
+  </section>
 
-    <h2>Risk Chains</h2>
-    <table>
-      <thead><tr><th>Risk</th><th>Chain</th><th>Component</th><th>Capabilities</th></tr></thead>
-      <tbody>
-        ${riskChains.length === 0 ? `<tr><td colspan="4">No risk chains detected.</td></tr>` : riskChains.map((chain) => `<tr><td class="risk-${chain.risk}">${chain.risk}</td><td>${escapeHtml(chain.name)}</td><td><code>${escapeHtml(chain.componentId)}</code></td><td>${chain.capabilities.map((capability) => `<span class="pill">${escapeHtml(capability)}</span>`).join("")}</td></tr>`).join("\n")}
-      </tbody>
-    </table>
+  <section class="next-step">
+    <h3>Hand this to your coding agent</h3>
+    <pre><code>wta plan . --for-codex
+wta plan . --for-claude</code></pre>
+    <p class="muted">The fix plan is also written to <code>fix-plan.md</code> alongside this report.</p>
+  </section>
+</main>
 
-    <h2>Expected / Acknowledged</h2>
-    <table>
-      <thead><tr><th>Component</th><th>Capability</th><th>Reason</th></tr></thead>
-      <tbody>
-        ${result.expected.length === 0 ? `<tr><td colspan="3">No expected capabilities were declared in policy.</td></tr>` : result.expected.slice(0, 50).map((observation) => `<tr><td><code>${escapeHtml(observation.componentId)}</code></td><td>${observation.capability ? `<span class="pill">${escapeHtml(observation.capability)}</span>` : ""}</td><td>${escapeHtml(observation.message)}</td></tr>`).join("\n")}
-      </tbody>
-    </table>
-
-    <h2>Normal Observations</h2>
-    <table>
-      <thead><tr><th>Component</th><th>Category</th><th>Observation</th></tr></thead>
-      <tbody>
-        ${normalObservations.length === 0 ? `<tr><td colspan="3">No normal observations generated.</td></tr>` : normalObservations.map((observation) => `<tr><td><code>${escapeHtml(observation.componentId)}</code></td><td>${escapeHtml(observation.category)}</td><td>${escapeHtml(observation.message)}</td></tr>`).join("\n")}
-      </tbody>
-    </table>
-
-    <h2>Quick Fixes</h2>
-    <table>
-      <thead><tr><th>Risk</th><th>Fix</th><th>Kind</th><th>Component</th></tr></thead>
-      <tbody>
-        ${result.quickFixes.slice(0, 40).map((fix) => `<tr><td class="risk-${fix.risk}">${fix.risk}</td><td>${escapeHtml(fix.title)}</td><td>${fix.kind}</td><td><code>${escapeHtml(fix.componentId ?? "")}</code></td></tr>`).join("\n") || `<tr><td colspan="4">No quick fixes generated.</td></tr>`}
-      </tbody>
-    </table>
-
-    <h2>Copyable Agent Plan</h2>
-    <pre>${escapeHtml(planText)}</pre>
-  </main>
+<footer>
+  <span>Local static report · secrets redacted · schema ${escapeHtml(result.schemaVersion)}</span>
+</footer>
 </body>
 </html>
 `;
 }
 
+function statusPill(kind: "crit" | "warn" | "ok" | "info", count: number, singular: string, plural: string): string {
+  const label = count === 1 ? singular : plural;
+  return `<div class="pill pill-${kind}"><span class="pill-num">${count}</span><span class="pill-label">${escapeHtml(label)}</span></div>`;
+}
+
+function headlinePhrase(risk: number, attention: number): string {
+  if (risk > 0 && attention > 0) return `${risk} risk chain${risk === 1 ? "" : "s"} and ${attention} item${attention === 1 ? "" : "s"} need attention.`;
+  if (risk > 0) return `${risk} risk chain${risk === 1 ? "" : "s"} detected.`;
+  return `${attention} item${attention === 1 ? "" : "s"} need attention.`;
+}
+
+function renderChainCard(chain: RiskChain): string {
+  const caps = chain.capabilities.slice();
+  const left = caps[0] ?? "?";
+  const right = caps.slice(1).join(" + ") || "—";
+  const evidence = chain.evidence.slice(0, 2);
+  return `<article class="card chain-card chain-${chain.risk}">
+  <div class="chain-head">
+    <span class="risk-pill risk-${chain.risk}">${chain.risk}</span>
+    <h3>${escapeHtml(chain.name)}</h3>
+  </div>
+  <div class="chain-flow" aria-label="capability chain">
+    <span class="chain-cap">${escapeHtml(left)}</span>
+    <span class="chain-arrow" aria-hidden="true">→</span>
+    <span class="chain-cap">${escapeHtml(right)}</span>
+  </div>
+  <p class="chain-msg">${escapeHtml(chain.message)}</p>
+  <div class="chain-meta">
+    <span class="chain-component"><code>${escapeHtml(chain.componentId)}</code></span>
+  </div>
+  ${evidence.length > 0 ? `<details class="chain-evidence"><summary>Evidence (${chain.evidence.length})</summary>${evidence.map((ev) => `<div class="ev-row"><code>${escapeHtml(ev.file)}${ev.line ? `:${ev.line}` : ""}</code>${ev.snippet ? `<div class="ev-snippet">${escapeHtml(ev.snippet)}</div>` : ""}</div>`).join("")}</details>` : ""}
+</article>`;
+}
+
+function renderGapCard(gap: ControlGap): string {
+  return `<article class="card gap-card">
+  <div class="chain-head">
+    <span class="risk-pill risk-${gap.risk}">${gap.risk}</span>
+    <h3>${escapeHtml(humanize(gap.control))}</h3>
+  </div>
+  <p class="chain-msg">${escapeHtml(gap.message)}</p>
+  <div class="chain-meta">
+    <span class="chain-component"><code>${escapeHtml(gap.componentId)}</code></span>
+  </div>
+</article>`;
+}
+
+function renderObservationCard(observation: Observation): string {
+  return `<article class="card obs-card">
+  <div class="chain-head">
+    <span class="risk-pill risk-low">expected</span>
+    <h3>${escapeHtml(observation.capability ?? "acknowledged")}</h3>
+  </div>
+  <p class="chain-msg">${escapeHtml(observation.message)}</p>
+  <div class="chain-meta">
+    <span class="chain-component"><code>${escapeHtml(observation.componentId)}</code></span>
+  </div>
+</article>`;
+}
+
 function metric(label: string, value: number): string {
-  return `<div class="card"><div class="metric">${value}</div><div class="label">${escapeHtml(label)}</div></div>`;
+  return `<div class="metric"><div class="metric-num">${value}</div><div class="metric-label">${escapeHtml(label)}</div></div>`;
+}
+
+function humanize(value: string): string {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function riskRank(risk: RiskLevel): number {
+  return ({ critical: 4, high: 3, medium: 2, low: 1 } as const)[risk];
 }
 
 function escapeHtml(value: string): string {
@@ -163,5 +233,311 @@ function escapeHtml(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function styles(): string {
+  return `
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --surface: #f8fafc;
+      --surface-2: #f1f5f9;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --line-strong: #cbd5e1;
+      --crit-bg: #fef2f2;
+      --crit-fg: #b91c1c;
+      --crit-line: #fecaca;
+      --warn-bg: #fffbeb;
+      --warn-fg: #b45309;
+      --warn-line: #fde68a;
+      --ok-bg: #f0fdf4;
+      --ok-fg: #15803d;
+      --ok-line: #bbf7d0;
+      --info-bg: #ecfeff;
+      --info-fg: #0e7490;
+      --info-line: #a5f3fc;
+      --code-bg: #f1f5f9;
+      --shadow: 0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.04);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220;
+        --surface: #0f172a;
+        --surface-2: #111c2f;
+        --ink: #f1f5f9;
+        --muted: #94a3b8;
+        --line: #1e293b;
+        --line-strong: #334155;
+        --crit-bg: #2a0e10;
+        --crit-fg: #fca5a5;
+        --crit-line: #7f1d1d;
+        --warn-bg: #2a1d05;
+        --warn-fg: #fbbf24;
+        --warn-line: #92400e;
+        --ok-bg: #052e1a;
+        --ok-fg: #86efac;
+        --ok-line: #14532d;
+        --info-bg: #082f3a;
+        --info-fg: #67e8f9;
+        --info-line: #155e75;
+        --code-bg: #111c2f;
+        --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .hero {
+      padding: 32px 40px 0;
+      background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #34d399, #22d3ee);
+      color: #0b1220;
+      font-weight: 800;
+      border-radius: 8px;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+    }
+    .brand-name { font-weight: 700; font-size: 16px; }
+    .brand-path { color: var(--muted); font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .nav { display: flex; gap: 18px; }
+    .nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 0;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nav a:hover { color: var(--ink); border-bottom-color: var(--line-strong); }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .pill {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+    .pill-num { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+    .pill-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+    .pill-crit { background: var(--crit-bg); border-color: var(--crit-line); }
+    .pill-crit .pill-num { color: var(--crit-fg); }
+    .pill-warn { background: var(--warn-bg); border-color: var(--warn-line); }
+    .pill-warn .pill-num { color: var(--warn-fg); }
+    .pill-ok { background: var(--ok-bg); border-color: var(--ok-line); }
+    .pill-ok .pill-num { color: var(--ok-fg); }
+    .pill-info { background: var(--info-bg); border-color: var(--info-line); }
+    .pill-info .pill-num { color: var(--info-fg); }
+
+    .hero-headline { padding: 8px 0 32px; }
+    .hero-headline h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.5px; }
+    .hero-headline p { margin: 0; color: var(--muted); }
+
+    main { padding: 28px 40px 64px; max-width: 1200px; margin: 0 auto; }
+
+    .tier { padding: 28px 0 8px; border-top: 1px solid var(--line); margin-top: 24px; }
+    .tier:first-child { border-top: 0; margin-top: 0; }
+    .tier-head { margin-bottom: 18px; }
+    .tier-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .tier-head h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.3px; }
+    .tier-head p { margin: 0; color: var(--muted); font-size: 14px; }
+    .tier-crit .tier-tag { background: var(--crit-bg); color: var(--crit-fg); }
+    .tier-warn .tier-tag { background: var(--warn-bg); color: var(--warn-fg); }
+    .tier-ok .tier-tag { background: var(--ok-bg); color: var(--ok-fg); }
+    .tier-info .tier-tag { background: var(--info-bg); color: var(--info-fg); }
+
+    .visual-wrap {
+      margin: 16px 0 24px;
+      padding: 12px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .visual-wrap svg { display: block; width: 100%; height: auto; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .chain-card { border-left: 4px solid var(--crit-line); }
+    .chain-card.chain-critical { border-left-color: var(--crit-fg); }
+    .chain-card.chain-high { border-left-color: var(--warn-fg); }
+    .gap-card { border-left: 4px solid var(--warn-fg); }
+    .obs-card { border-left: 4px solid var(--ok-fg); }
+    .chain-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .chain-head h3 { margin: 0; font-size: 16px; letter-spacing: -0.2px; }
+    .chain-flow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 0 12px;
+      flex-wrap: wrap;
+    }
+    .chain-cap {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 10px;
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+    }
+    .chain-arrow {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .chain-msg { margin: 0 0 10px; color: var(--ink); font-size: 14px; }
+    .chain-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
+    .chain-component code { font-size: 11px; }
+    .chain-evidence { margin-top: 12px; }
+    .chain-evidence summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 0;
+    }
+    .ev-row { padding: 8px 10px; background: var(--code-bg); border-radius: 6px; margin-top: 6px; font-size: 12px; }
+    .ev-snippet {
+      margin-top: 4px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .empty { padding: 18px; color: var(--muted); font-size: 14px; }
+
+    .risk-pill {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .risk-pill.risk-critical, .risk-critical { background: var(--crit-bg); color: var(--crit-fg); }
+    .risk-pill.risk-high, .risk-high { background: var(--warn-bg); color: var(--warn-fg); }
+    .risk-pill.risk-medium, .risk-medium { background: var(--info-bg); color: var(--info-fg); }
+    .risk-pill.risk-low, .risk-low { background: var(--ok-bg); color: var(--ok-fg); }
+
+    .cap-pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      margin: 2px 4px 2px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .metric-num { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 600; margin-top: 2px; }
+
+    h3 { margin: 22px 0 10px; font-size: 14px; font-weight: 700; letter-spacing: 0.2px; text-transform: uppercase; color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 13px; }
+    th { background: var(--surface-2); font-size: 12px; color: var(--muted); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background: var(--code-bg); padding: 2px 5px; border-radius: 4px; }
+    .path { color: var(--muted); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .obs-list { padding-left: 18px; color: var(--ink); font-size: 13px; line-height: 1.7; }
+    .obs-list li { margin-bottom: 4px; }
+
+    .next-step { margin-top: 36px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .next-step h3 { margin-top: 0; }
+    .next-step pre {
+      margin: 12px 0 8px;
+      background: var(--surface-2);
+      color: var(--ink);
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    .next-step pre code { background: transparent; padding: 0; }
+    .muted { color: var(--muted); font-size: 13px; }
+
+    footer {
+      padding: 24px 40px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--line);
+      text-align: center;
+    }
+
+    @media (max-width: 720px) {
+      .hero, main, footer { padding-left: 20px; padding-right: 20px; }
+      .nav { width: 100%; }
+      .cards { grid-template-columns: 1fr; }
+    }
+  `;
 }

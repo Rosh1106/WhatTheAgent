@@ -83,18 +83,24 @@ export function formatUnderstandSummary(result: UnderstandResult, options: Forma
       title: chain.name,
       componentId: chain.componentId,
       message: chain.message,
-      fix: suggestedFixForCapabilities(chain.capabilities)
+      fix: suggestedFixForCapabilities(chain.capabilities),
+      capabilities: chain.capabilities,
+      risk: chain.risk
     })),
     ...meaningfulGaps.slice(0, Math.max(0, 5 - result.riskChains.length)).map((gap) => ({
       title: gap.control,
       componentId: gap.componentId,
       message: gap.message,
-      fix: `Add ${gap.control.replace(/_/g, " ")}.`
+      fix: `Add ${gap.control.replace(/_/g, " ")}.`,
+      capabilities: [] as string[],
+      risk: gap.risk
     }))
   ];
   const normalObservations = result.observations.filter((observation) => observation.impact === "informational").slice(0, 5);
   const lines = [
     "WhatTheAgent understood this workspace",
+    "",
+    formatTldrLine(result.riskChains.length, meaningfulGaps.length, result.expected.length, result.inventory.counts.findings),
     "",
     "Detected setup",
     `- ${result.inventory.counts.toolServers} MCP server${result.inventory.counts.toolServers === 1 ? "" : "s"}`,
@@ -118,7 +124,11 @@ export function formatUnderstandSummary(result: UnderstandResult, options: Forma
     lines.push("- Nothing urgent found. Normal tool capabilities are listed as observations.");
   } else {
     needsAttention.slice(0, 5).forEach((item, index) => {
-      lines.push(`${index + 1}. ${item.message}`);
+      lines.push(`${index + 1}. [${item.risk.toUpperCase()}] ${item.title}`);
+      if (item.capabilities.length >= 2) {
+        lines.push(`   ${item.capabilities[0]}  -->  ${item.capabilities.slice(1).join(" + ")}`);
+      }
+      lines.push(`   ${item.message}`);
       lines.push(`   Component: ${item.componentId}`);
       lines.push(`   Suggested fix: ${item.fix}`);
     });
@@ -201,6 +211,16 @@ export function formatRuntimePlanSummary(plan: RuntimePlan): string {
 
 function humanCapability(capability: string): string {
   return capability.replace(/_/g, " ");
+}
+
+function formatTldrLine(riskChains: number, gaps: number, expected: number, findings: number): string {
+  const segments = [
+    `${riskChains} risk chain${riskChains === 1 ? "" : "s"}`,
+    `${gaps} need${gaps === 1 ? "s" : ""} attention`,
+    `${expected} acknowledged`,
+    `${findings} inventory finding${findings === 1 ? "" : "s"}`
+  ];
+  return segments.join("  |  ");
 }
 
 function formatDetectedClients(result: UnderstandResult): string[] {
