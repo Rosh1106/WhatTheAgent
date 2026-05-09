@@ -47,6 +47,8 @@
     "probe:example": "tsx src/cli.ts probe examples/risky-agent",
     "instructions:example": "tsx src/cli.ts instructions --for-claude",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run"
   },
@@ -59,7 +61,8 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=20"
