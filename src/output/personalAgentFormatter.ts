@@ -40,49 +40,58 @@ export function formatPersonalBaselineSummary(baseline: PersonalAgentBaseline, o
 }
 
 export function formatPersonalBaselineDiffSummary(diff: PersonalAgentBaselineDiff, options: PersonalFormatOptions = {}): string {
+  const tldr = formatDiffTldr(diff);
   const lines = [
     "WhatTheAgent personal-agent baseline diff",
-    "",
     `Profile: ${diff.profile}`,
     "",
-    "Changes",
-    `- New skills: ${diff.summary.newSkillCount}`,
-    `- Removed skills: ${diff.summary.removedSkillCount}`,
-    `- Added capabilities: ${diff.summary.addedCapabilityCount}`,
-    `- Added risk chains: ${diff.summary.addedRiskChainCount}`,
-    "",
-    "New skill review"
+    tldr,
+    ""
   ];
 
-  if (diff.newSkills.length === 0) {
-    lines.push("- No new skills detected.");
-  } else {
-    for (const skill of diff.newSkills) {
-      lines.push(`- ${skill.label} (${skill.path ?? skill.componentId})`);
-      lines.push(`  Permissions: ${skill.capabilities.join(", ") || "none detected"}`);
-      if (skill.riskChains.length > 0) {
-        lines.push(`  Risk chains: ${skill.riskChains.map((chain) => `${chain.name} (${chain.risk})`).join(", ")}`);
+  if (diff.summary.addedRiskChainCount > 0) {
+    lines.push("Risk chain", "");
+    for (const chain of diff.addedRiskChains) {
+      lines.push(`[${chain.risk.toUpperCase()}] ${chain.name}`);
+      if (chain.capabilities.length >= 2) {
+        lines.push(`  ${chain.capabilities[0]}  -->  ${chain.capabilities.slice(1).join(" + ")}`);
       }
+      lines.push(`  ${chain.message}`);
+      lines.push(`  Component: ${chain.componentId}`);
+      lines.push("");
     }
   }
 
+  if (diff.summary.newSkillCount > 0) {
+    lines.push("New skills", "");
+    for (const skill of diff.newSkills) {
+      lines.push(`+ ${skill.label}`);
+      lines.push(`  Path: ${skill.path ?? skill.componentId}`);
+      lines.push(`  Capabilities: ${skill.capabilities.join(", ") || "none detected"}`);
+      if (skill.riskChains.length > 0) {
+        lines.push(`  Risk chains: ${skill.riskChains.map((chain) => `${chain.name} (${chain.risk})`).join(", ")}`);
+      }
+      lines.push("");
+    }
+  }
+
+  if (diff.summary.removedSkillCount > 0) {
+    lines.push("Removed skills", "");
+    for (const skill of diff.removedSkills) {
+      lines.push(`- ${skill.label} (${skill.path ?? skill.componentId})`);
+    }
+    lines.push("");
+  }
+
+  if (diff.summary.newSkillCount === 0 && diff.summary.removedSkillCount === 0 && diff.summary.addedCapabilityCount === 0 && diff.summary.addedRiskChainCount === 0) {
+    lines.push("No changes since baseline.", "");
+  }
+
   lines.push(
-    "",
-    "Ask the user:",
-    "Are you fine with these new skill capabilities, or do you want guardrails before approving the skill?",
-    "",
-    "Guardrail options",
-    "- require approval before execution or external sends",
-    "- add command allowlist",
-    "- add external domain allowlist",
-    "- scope and redact secrets",
-    "- sandbox scripts/MCP servers",
-    "- add audit logging",
-    "",
-    "Agent next step",
-    "- Review `.wta/new-skill-review-plan.md`.",
-    "- If accepted, apply `.wta/policy-proposal.yaml` to `wta.policy.yaml`.",
-    "- If not accepted, implement guardrails first."
+    "Action",
+    "  Accept: wta ack <component> [<capability>] --reason \"...\"",
+    "    or apply .wta/policy-proposal.yaml into wta.policy.yaml",
+    "  Decline: add a guardrail (approval, allowlist, secret scoping, sandbox, audit log) before next run"
   );
 
   if (options.filesWritten?.length) {
@@ -91,4 +100,13 @@ export function formatPersonalBaselineDiffSummary(diff: PersonalAgentBaselineDif
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function formatDiffTldr(diff: PersonalAgentBaselineDiff): string {
+  return [
+    `${diff.summary.newSkillCount} new skill${diff.summary.newSkillCount === 1 ? "" : "s"}`,
+    `${diff.summary.removedSkillCount} removed`,
+    `${diff.summary.addedCapabilityCount} added capabilit${diff.summary.addedCapabilityCount === 1 ? "y" : "ies"}`,
+    `${diff.summary.addedRiskChainCount} added risk chain${diff.summary.addedRiskChainCount === 1 ? "" : "s"}`
+  ].join("  |  ");
 }
