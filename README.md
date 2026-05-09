@@ -23,7 +23,7 @@
 
 ## Why this exists
 
-AI agent workspaces have grown from "one Claude Code skill" into sprawling combinations of skills, MCP servers, scripts, plugins, and policies. Each surface looks fine alone. The risk is in the **combinations**:
+X-obsessed engineers and degens are installing every new AI tool, skill, and MCP server they can get their hands on. That energy is how the ecosystem moves — but as agents start running real parts of how we ship code, manage incidents, and touch infrastructure, *"I added this thing yesterday"* stops being a good answer to *"what can your agent actually do?"*. We have to be responsible about it. The risk is rarely any single tool. It's the **combinations**:
 
 - A skill that can read `.env` files. *Fine.*
 - A skill that can POST to webhooks. *Fine.*
