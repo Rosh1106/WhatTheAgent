@@ -71,6 +71,19 @@ See [the script](scripts/run.sh) and [docs](https://example.com) and [section](#
     expect(parsed.component.metadata.referencedFiles.some((p) => p.includes("anchor"))).toBe(false);
   });
 
+  it("does not throw on malformed YAML frontmatter (real-world: unquoted colon in description)", async () => {
+    const file = await writeSkill("skills/bad-frontmatter/SKILL.md", `---
+name: bad-frontmatter
+description: Core style mechanics for content: formatting, grammar, punctuation.
+---
+
+Body content here.
+`);
+    const parsed = await parseSkill(workdir, file);
+    expect(parsed.component.label).toBe("bad-frontmatter");
+    expect(parsed.body).toContain("Body content here.");
+  });
+
   it("computes a stable component id from the directory path", async () => {
     const fileA = await writeSkill("skills/same/SKILL.md", `---
 name: same

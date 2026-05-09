@@ -14,7 +14,7 @@ export interface ParsedSkill {
 export async function parseSkill(root: string, skillFile: string): Promise<ParsedSkill> {
   const safeRead = await readTextFileForScan(skillFile);
   const content = safeRead.content ?? "";
-  const parsed = matter(content);
+  const parsed = safeMatter(content);
   const relPath = relativePath(root, skillFile);
   const directory = path.dirname(skillFile);
   const name = safeRead.skipped ? path.basename(directory) : readString(parsed.data.name) ?? path.basename(directory);
@@ -40,6 +40,22 @@ export async function parseSkill(root: string, skillFile: string): Promise<Parse
     directory,
     bodyStartLine: safeRead.skipped ? 1 : getBodyStartLine(content)
   };
+}
+
+function safeMatter(content: string): { data: Record<string, unknown>; content: string } {
+  try {
+    const parsed = matter(content);
+    return { data: parsed.data as Record<string, unknown>, content: parsed.content };
+  } catch {
+    return { data: {}, content: stripFrontmatterFallback(content) };
+  }
+}
+
+function stripFrontmatterFallback(content: string): string {
+  const lines = content.split(/\r?\n/);
+  if (lines[0] !== "---") return content;
+  const closingIndex = lines.findIndex((line, index) => index > 0 && line === "---");
+  return closingIndex === -1 ? content : lines.slice(closingIndex + 1).join("\n");
 }
 
 function readString(value: unknown): string | undefined {
