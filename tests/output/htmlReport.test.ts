@@ -129,16 +129,30 @@ describe("renderHtmlReport", () => {
     expect(withoutExpected).not.toContain("id=\"expected\"");
   });
 
-  it("escapes HTML in chain names and component ids", () => {
+  it("escapes HTML in chain names, component labels, and paths", () => {
     const malicious: RiskChain = {
       ...exfilChain,
       name: "<script>alert(1)</script>",
-      componentId: "skill.<img src=x>"
+      componentId: "skill.malicious"
     };
-    const html = renderHtmlReport(baseResult({ riskChains: [malicious] }));
+    const result = baseResult({
+      riskChains: [malicious],
+      scan: {
+        ...baseResult().scan,
+        components: [{
+          id: "skill.malicious",
+          type: "skill",
+          label: "<img src=x onerror=alert(1)>",
+          path: "<svg/onload=alert(1)>"
+        }]
+      }
+    });
+    const html = renderHtmlReport(result);
     expect(html).not.toContain("<script>alert(1)</script>");
+    expect(html).not.toContain("<img src=x onerror");
+    expect(html).not.toContain("<svg/onload");
     expect(html).toContain("&lt;script&gt;");
-    expect(html).toContain("skill.&lt;img");
+    expect(html).toContain("&lt;img");
   });
 
   it("includes the four-pill status strip with correct counts", () => {
@@ -150,6 +164,32 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("class=\"pill pill-warn\"");
     expect(html).toContain("class=\"pill pill-ok\"");
     expect(html).toContain("class=\"pill pill-info\"");
+  });
+
+  it("leads chain cards with the component label and type, demoting the slug ID", () => {
+    const result = baseResult({
+      riskChains: [exfilChain],
+      scan: {
+        ...baseResult().scan,
+        components: [{
+          id: "skill.invoice-review",
+          type: "skill",
+          label: "invoice-review",
+          path: "skills/invoice-review/SKILL.md"
+        }]
+      }
+    });
+    const html = renderHtmlReport(result);
+    expect(html).toContain("comp-label");
+    expect(html).toContain("invoice-review");
+    expect(html).toContain("comp-type");
+    expect(html).toContain(">Skill<");
+    expect(html).toContain("skills/invoice-review/SKILL.md");
+  });
+
+  it("falls back to (unknown component) when the chain references an id not in the scan", () => {
+    const html = renderHtmlReport(baseResult({ riskChains: [exfilChain] }));
+    expect(html).toContain("(unknown component)");
   });
 
   it("supports light and dark mode via prefers-color-scheme", () => {

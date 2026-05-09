@@ -1,8 +1,23 @@
-import type { ControlGap, Observation, RiskChain, RiskLevel, UnderstandResult } from "../core/types.js";
+import type { Component, ComponentType, ControlGap, Observation, RiskChain, RiskLevel, UnderstandResult } from "../core/types.js";
 import { renderVisualChainsSvg } from "./visualChainsSvg.js";
+
+interface ComponentRef {
+  id: string;
+  label: string;
+  type: ComponentType;
+  path?: string;
+}
+
+const FALLBACK_REF: ComponentRef = { id: "(unknown)", label: "(unknown component)", type: "skill" };
 
 export function renderHtmlReport(result: UnderstandResult): string {
   const visualSvg = renderVisualChainsSvg(result).replace(/^<\?xml[^?]*\?>\s*/, "");
+  const componentMap = new Map<string, Component>(result.scan.components.map((component) => [component.id, component]));
+  const lookup = (id: string): ComponentRef => {
+    const component = componentMap.get(id);
+    if (!component) return { ...FALLBACK_REF, id };
+    return { id: component.id, label: component.label, type: component.type, path: component.path };
+  };
   const riskChains = result.riskChains.slice();
   const meaningfulGaps = result.controlGaps.filter((gap) => gap.impact === "fix_required" || gap.impact === "fix_recommended");
   const expected = result.expected.slice(0, 50);
@@ -68,7 +83,7 @@ export function renderHtmlReport(result: UnderstandResult): string {
     </div>
     <div class="visual-wrap" aria-hidden="true">${visualSvg}</div>
     <div class="cards">
-      ${riskChains.map(renderChainCard).join("")}
+      ${riskChains.map((chain) => renderChainCard(chain, lookup(chain.componentId))).join("")}
     </div>
   </section>` : ""}
 
@@ -81,7 +96,7 @@ export function renderHtmlReport(result: UnderstandResult): string {
     <div class="cards">
       ${meaningfulGaps.length === 0
         ? `<div class="empty">No actionable control gaps.</div>`
-        : meaningfulGaps.slice(0, 25).map(renderGapCard).join("")
+        : meaningfulGaps.slice(0, 25).map((gap) => renderGapCard(gap, lookup(gap.componentId))).join("")
       }
     </div>
   </section>
@@ -94,7 +109,7 @@ export function renderHtmlReport(result: UnderstandResult): string {
       <p>Capabilities you've already approved. Only changes will reappear.</p>
     </div>
     <div class="cards">
-      ${expected.map(renderObservationCard).join("")}
+      ${expected.map((obs) => renderObservationCard(obs, lookup(obs.componentId))).join("")}
     </div>
   </section>` : ""}
 
@@ -167,53 +182,62 @@ function headlinePhrase(risk: number, attention: number): string {
   return `${attention} item${attention === 1 ? "" : "s"} need attention.`;
 }
 
-function renderChainCard(chain: RiskChain): string {
+function renderChainCard(chain: RiskChain, ref: ComponentRef): string {
   const caps = chain.capabilities.slice();
   const left = caps[0] ?? "?";
   const right = caps.slice(1).join(" + ") || "—";
   const evidence = chain.evidence.slice(0, 2);
   return `<article class="card chain-card chain-${chain.risk}">
-  <div class="chain-head">
-    <span class="risk-pill risk-${chain.risk}">${chain.risk}</span>
-    <h3>${escapeHtml(chain.name)}</h3>
-  </div>
+  ${componentHeader(ref, chain.risk, chain.name)}
   <div class="chain-flow" aria-label="capability chain">
     <span class="chain-cap">${escapeHtml(left)}</span>
     <span class="chain-arrow" aria-hidden="true">→</span>
     <span class="chain-cap">${escapeHtml(right)}</span>
   </div>
   <p class="chain-msg">${escapeHtml(chain.message)}</p>
-  <div class="chain-meta">
-    <span class="chain-component"><code>${escapeHtml(chain.componentId)}</code></span>
-  </div>
   ${evidence.length > 0 ? `<details class="chain-evidence"><summary>Evidence (${chain.evidence.length})</summary>${evidence.map((ev) => `<div class="ev-row"><code>${escapeHtml(ev.file)}${ev.line ? `:${ev.line}` : ""}</code>${ev.snippet ? `<div class="ev-snippet">${escapeHtml(ev.snippet)}</div>` : ""}</div>`).join("")}</details>` : ""}
 </article>`;
 }
 
-function renderGapCard(gap: ControlGap): string {
+function renderGapCard(gap: ControlGap, ref: ComponentRef): string {
   return `<article class="card gap-card">
-  <div class="chain-head">
-    <span class="risk-pill risk-${gap.risk}">${gap.risk}</span>
-    <h3>${escapeHtml(humanize(gap.control))}</h3>
-  </div>
+  ${componentHeader(ref, gap.risk, `Missing: ${humanize(gap.control)}`)}
   <p class="chain-msg">${escapeHtml(gap.message)}</p>
-  <div class="chain-meta">
-    <span class="chain-component"><code>${escapeHtml(gap.componentId)}</code></span>
-  </div>
 </article>`;
 }
 
-function renderObservationCard(observation: Observation): string {
+function renderObservationCard(observation: Observation, ref: ComponentRef): string {
   return `<article class="card obs-card">
-  <div class="chain-head">
-    <span class="risk-pill risk-low">expected</span>
-    <h3>${escapeHtml(observation.capability ?? "acknowledged")}</h3>
-  </div>
+  ${componentHeader(ref, "low", `Expected · ${observation.capability ?? "acknowledged"}`)}
   <p class="chain-msg">${escapeHtml(observation.message)}</p>
-  <div class="chain-meta">
-    <span class="chain-component"><code>${escapeHtml(observation.componentId)}</code></span>
-  </div>
 </article>`;
+}
+
+function componentHeader(ref: ComponentRef, risk: RiskLevel, subtitle: string): string {
+  return `<header class="comp-header">
+    <div class="comp-id">
+      <span class="risk-pill risk-${risk}">${risk}</span>
+      <h3 class="comp-label">${escapeHtml(ref.label)}</h3>
+      <span class="comp-type">${escapeHtml(componentTypeLabel(ref.type))}</span>
+    </div>
+    ${ref.path ? `<div class="comp-path"><code>${escapeHtml(ref.path)}</code></div>` : ""}
+    <div class="comp-subtitle">${escapeHtml(subtitle)}</div>
+  </header>`;
+}
+
+function componentTypeLabel(type: ComponentType): string {
+  switch (type) {
+    case "mcp_server": return "MCP";
+    case "skill": return "Skill";
+    case "script": return "Script";
+    case "prompt": return "Prompt";
+    case "rule": return "Rule";
+    case "memory": return "Memory";
+    case "config": return "Config";
+    case "env_var": return "Env";
+    case "api_endpoint": return "API";
+    case "capability": return "Capability";
+  }
 }
 
 function metric(label: string, value: number): string {
@@ -415,6 +439,43 @@ function styles(): string {
     .obs-card { border-left: 4px solid var(--ok-fg); }
     .chain-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
     .chain-head h3 { margin: 0; font-size: 16px; letter-spacing: -0.2px; }
+    .comp-header { margin-bottom: 14px; }
+    .comp-id { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .comp-label {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--ink);
+      word-break: break-word;
+    }
+    .comp-type {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--code-bg);
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+    .comp-path { margin-top: 2px; }
+    .comp-path code {
+      background: transparent;
+      padding: 0;
+      font-size: 11px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .comp-subtitle {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
     .chain-flow {
       display: flex;
       align-items: center;
