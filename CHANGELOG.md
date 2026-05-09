@@ -8,17 +8,24 @@ release; breaking schema changes will be called out in the relevant section.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-09
+
+The "we're going public" release. Big visual + scope cleanup since 0.1.0 plus open-source scaffolding.
+
 ### Added
 
-- README mascot (`readme/mascot.svg`) and animated terminal demo (`readme/demo.svg`).
-- npm / license / Node / tests / status badges and a sharper "Why this exists" section in `README.md`.
-- `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `RELEASE.md`, GitHub issue templates, and a pull-request template.
+- **README mascot** (`readme/mascot.svg`) and **animated terminal demo** (`readme/demo.svg`) — both inline SVG, no external assets.
+- **npm / license / Node / tests / status badges** and a sharper "Why this exists" section in `README.md`.
+- **Open-source scaffolding**: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `RELEASE.md`, GitHub issue templates (bug, false-positive, feature), `.github/PULL_REQUEST_TEMPLATE.md`, and `.github/ISSUE_TEMPLATE/config.yml`.
+- **Dependabot config** (`.github/dependabot.yml`) — weekly grouped npm + github-actions updates.
+- **CodeQL workflow** (`.github/workflows/codeql.yml`) — JavaScript/TypeScript SAST on push, PR, and weekly schedule.
 - A "Non-goals" section in `docs/ROADMAP.md` that explicitly puts sandbox capability probing, runtime monitoring/enforcement, SaaS dashboards, and silent fixes out of scope.
 
 ### Changed
 
 - `readme/README.md` (docs hub), `readme/personal-agents.md`, `readme/workspace-stations.md`, `readme/agent-instructions.md`, and `docs/ROADMAP.md` brought up to date with the current command surface (`--chat`, `--open`, `--exclude`, `--from-scan`, `--reason-from-stdin`, `wta ack`, `wta ack-batch`).
 - `AGENTS.md` snapshot of the current architecture and detection-quality rules for new contributors. The "Runtime and sandbox direction" section is replaced with an explicit "What WhatTheAgent does *not* do" scope reminder.
+- `SECURITY.md` rewritten with private security advisory link, scope of what counts as a security issue, and what doesn't.
 
 ### Removed
 
@@ -69,5 +76,6 @@ The first publishable cut of WhatTheAgent. Highlights:
 - Component IDs are slugs of full paths and remain unreadable for deeply nested skills; switching to `<basename>-<6char-hash>` is on the roadmap.
 - `wta probe` and `wta runtime` are plan-only.
 
-[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Rosh1106/WhatTheAgent/releases/tag/v0.1.0
