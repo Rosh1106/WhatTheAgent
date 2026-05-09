@@ -1,21 +1,53 @@
 # WhatTheAgent
 
 <p align="center">
-  <img src="readme/hero.svg" alt="WhatTheAgent — local-first capability discovery for AI agents. Discovers skills, MCP servers, scripts and configs, then detects risky capability chains such as credential_access + external_send = data exfiltration." width="100%"/>
+  <img src="readme/mascot.svg" alt="Wat, the WhatTheAgent mascot — a small teal robot inspecting an AI agent's capabilities through a magnifying glass." width="180"/>
 </p>
 
-**WhatTheAgent shows what your AI agent can actually do.**
+<p align="center">
+  <strong>Local-first capability discovery for AI agent workspaces.</strong><br/>
+  Find what your skills, MCP servers, and scripts can <em>actually</em> do — and which combinations are dangerous.
+</p>
 
-It scans an agent workspace locally — no LLM calls, no uploads — discovers every skill, MCP server, script, and config, and surfaces the *capability chains* that matter: e.g. a skill that can read credentials *and* send to a webhook is flagged as a Data Exfiltration risk, with concrete fixes you can hand to your coding agent.
+<p align="center">
+  <a href="https://www.npmjs.com/package/whattheagent"><img alt="npm version" src="https://img.shields.io/npm/v/whattheagent?color=0EA5E9&label=npm"/></a>
+  <a href="LICENSE"><img alt="license MIT" src="https://img.shields.io/badge/license-MIT-22D3EE"/></a>
+  <a href="https://nodejs.org"><img alt="node ≥ 20" src="https://img.shields.io/badge/node-%E2%89%A520-34D399"/></a>
+  <a href="#tests"><img alt="tests" src="https://img.shields.io/badge/tests-173%20passing-22C55E"/></a>
+  <a href="#status"><img alt="status pre-1.0" src="https://img.shields.io/badge/status-pre--1.0-FBBF24"/></a>
+</p>
+
+<p align="center">
+  <img src="readme/demo.svg" alt="Animated terminal demo: wta understand --chat detects a Data Exfiltration risk chain in invoice-review, then `echo \"internal finance pipeline\" | wta ack skill.invoice-review --reason-from-stdin` adds it to the policy." width="100%"/>
+</p>
+
+## Why this exists
+
+AI agent workspaces have grown from "one Claude Code skill" into sprawling combinations of skills, MCP servers, scripts, plugins, and policies. Each surface looks fine alone. The risk is in the **combinations**:
+
+- A skill that can read `.env` files. *Fine.*
+- A skill that can POST to webhooks. *Fine.*
+- The same skill can do **both**. **That's the shape of credential exfiltration**, regardless of intent.
+
+Existing tools don't catch this. SAST scans your code. SCA scans your dependencies. Neither understands what your *agent* can do once you give it a skill, an MCP server, and a script. There's no good answer to *"my agent has these 47 capabilities — what should I worry about?"*
+
+WhatTheAgent is that answer. One command surfaces the **capability chains** that matter — `credential_access + external_send → Data Exfiltration`, `execute_code + network_access → Remote Execution` — with the exact files and lines, plus a one-shot way to acknowledge intentional ones (`wta ack`) so future scans only flag what changed.
 
 ```bash
 npm install -g whattheagent
-wta understand . --output .wta
+wta understand . --chat            # phone-readable summary
+wta understand . --output .wta --open   # local HTML report
 ```
 
 - **Catches what single-capability scanners miss.** Each tool sees one risk; chains are emergent.
 - **Local and static.** No login, no upload, no LLM, no script execution, no MCP server startup.
-- **Built for AI workflows.** Emits human HTML, agent-readable JSON, and a fix plan for Codex / Claude Code / Cursor / OpenClaw / Hermes.
+- **Built for AI workflows.** Emits human HTML, agent-readable JSON, a chat-friendly summary for personal agents, and a fix plan for Codex / Claude Code / Cursor / OpenClaw / Hermes.
+
+## How it looks
+
+<p align="center">
+  <img src="readme/hero.svg" alt="WhatTheAgent flow: workspace surfaces (skills, MCP servers, scripts, configs) flow into a local scan that detects a credential_access + external_send risk chain." width="100%"/>
+</p>
 
 ## What you'll see
 
@@ -44,52 +76,17 @@ expected:
 
 After that, Burp moves to "Expected" and only **changes** to its capabilities reappear.
 
-## Install
-
-WhatTheAgent is published on npm:
+## Install and run
 
 ```bash
 npm install -g whattheagent
+wta understand . --output .wta --open    # write report.html and open it
+wta plan . --for-codex                   # hand a fix plan to your coding agent
 ```
 
-Verify the CLI:
+Sanity check: `wta --help` (or the longer `whattheagent --help`) lists every command. Node 20 or newer.
 
-```bash
-wta --help
-whattheagent --help
-```
-
-## Quick Start
-
-Run WhatTheAgent from any agent workspace:
-
-```bash
-wta understand . --output .wta
-```
-
-Then open:
-
-```text
-.wta/report.html
-```
-
-Ask your coding agent for a safe implementation plan:
-
-```bash
-wta plan . --for-codex
-wta plan . --for-claude
-```
-
-Generate copy-paste instructions for the agent you use:
-
-```bash
-wta instructions --for-claude
-wta instructions --for-codex
-wta instructions --for-openclaw
-wta instructions --for-hermes
-```
-
-## Choose Your Path
+## Choose your path
 
 WhatTheAgent has two modes:
 
@@ -110,40 +107,17 @@ Agent implements.
 WhatTheAgent verifies.
 ```
 
-## Paste Into Your Agent
+## Drop into an agent
 
-Generate copy-paste instructions for the agent you use:
-
-```bash
-wta instructions
-wta instructions --for-claude
-wta instructions --for-codex
-wta instructions --for-openclaw
-wta instructions --for-hermes
-```
-
-The instruction tells the agent to:
-
-```text
-baseline the workspace
-show current capabilities
-suggest guardrails
-ask before changing anything
-validate after fixes
-check again when new skills or MCP servers are added
-```
-
-For personal agents, you can write a skill-style instruction file:
+Two ways:
 
 ```bash
-wta instructions --for-hermes --output skills/whattheagent-safety-check.skill.md
+wta instructions --for-claude     # or --for-codex / --for-openclaw / --for-hermes
 ```
 
-A ready-made example also lives at:
+…produces a copy-paste prompt that tells your agent to baseline, summarize, suggest guardrails, and re-check whenever something changes.
 
-```text
-skills/whattheagent-safety-check.skill.md
-```
+A ready-made Hermes / OpenClaw skill lives at [skills/whattheagent-safety-check.skill.md](skills/whattheagent-safety-check.skill.md). It orchestrates `wta diff-baseline --chat`, posts the message verbatim to the user, and translates approve / guardrail / remove replies into `wta ack` (or `wta ack-batch` for "approve all").
 
 ## GitHub Actions
 
@@ -428,3 +402,49 @@ npm run dev -- understand examples/critical-payment-agent
 - `expected-github-tool` shows an expected MCP server declared by policy
 - `risky-finance-agent` triggers credential plus external-send risk
 - `critical-payment-agent` triggers payment and order-placement risk
+
+## Status
+
+WhatTheAgent is **pre-1.0**. The CLI surface, scan output schema, and policy YAML format may still change. Detection patterns will tighten over time as more workspaces are scanned and false-positive cases are reported.
+
+What's stable today:
+- `wta understand`, `wta scan`, `wta graph`, `wta diff`
+- `wta plan`, `wta instructions`, `wta compatibility`
+- `wta init-policy`, `wta ack`, `wta ack-batch`
+- `wta baseline`, `wta diff-baseline`
+- `--chat`, `--open`, `--exclude`, `--from-scan`, `--reason-from-stdin`
+- The HTML report, SVG visual chains, and chat-summary output formats
+
+What's still preview-only:
+- `wta probe` (sandbox capability probing — emits a plan, doesn't execute)
+- `wta runtime` (runtime observability — emits a plan, doesn't enforce)
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what's planned next.
+
+## Tests
+
+```bash
+npm install
+npm test           # 173 tests, ~700ms
+npm run typecheck
+npm run build
+```
+
+Test coverage includes risk classification, chain detection, sensitivity scoring, finding lifecycle, MCP and skill parsers, secret redaction, SVG and HTML report stability (with HTML-injection escape), the chat-summary builder, the policy-mutation engine (ack + ack-batch), and end-to-end scans of the example fixtures.
+
+## Contributing
+
+WhatTheAgent is open to contributions. Start with [CONTRIBUTING.md](CONTRIBUTING.md) — it has the dev setup, the test rules ("no PR without a regression test for whatever you fixed or added"), and the commit-style guide.
+
+If you have a security report, please follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+
+For day-to-day questions, the [readme/](readme/) directory has audience-specific docs:
+
+- [readme/personal-agents.md](readme/personal-agents.md) — for OpenClaw / Hermes / personal-agent users
+- [readme/workspace-stations.md](readme/workspace-stations.md) — for Codex / Claude Code / Cursor / VS Code repos
+- [readme/agent-instructions.md](readme/agent-instructions.md) — copy-paste prompts for agents
+- [readme/compatibility.md](readme/compatibility.md) — known-client paths and MCP config locations
+
+## License
+
+[MIT](LICENSE).

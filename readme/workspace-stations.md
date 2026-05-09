@@ -26,13 +26,13 @@ For teams:
 From a repo root:
 
 ```bash
-wta understand . --output .wta
+wta understand . --output .wta --open    # write report and open in browser
 ```
 
-Open:
+Skip noisy directories per-scan if you need to:
 
-```text
-.wta/report.html
+```bash
+wta understand . --exclude vendor --exclude '**/*.generated.*'
 ```
 
 Generate a coding-agent implementation prompt:
@@ -54,6 +54,18 @@ Compare two scans:
 wta scan . --json --output old.json
 wta scan . --json --output new.json
 wta diff old.json new.json
+```
+
+## Approve intentional capabilities
+
+After your first scan you'll see entries that are powerful-but-intentional (a Burp MCP for security testing, a deploy script, a GitHub MCP). Acknowledge them once so future scans only re-flag changes:
+
+```bash
+wta ack mcp.burp execute_code --reason "Burp Suite, security testing tool"
+wta ack mcp.github --reason "Read-only GitHub MCP, approved"
+
+# Approve everything currently visible at once (good after onboarding).
+wta init-policy . --from-scan
 ```
 
 ## Platform Detection
