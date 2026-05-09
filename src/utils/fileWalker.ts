@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { glob } from "glob";
 import { relativePath, toPosixPath } from "./normalize.js";
@@ -34,10 +35,12 @@ export async function findFiles(root: string, pattern: string | string[], extraI
     absolute: true,
     nodir: true,
     dot: true,
+    follow: false,
     ignore: combineIgnore(extraIgnore)
   });
 
-  return matches.sort((a, b) => relativePath(root, a).localeCompare(relativePath(root, b)));
+  const filtered = await keepOnlyInsideRoot(root, matches);
+  return filtered.sort((a, b) => relativePath(root, a).localeCompare(relativePath(root, b)));
 }
 
 export async function findExistingFiles(root: string, relativeFiles: string[], extraIgnore: string[] = []): Promise<string[]> {
@@ -49,6 +52,7 @@ export async function findExistingFiles(root: string, relativeFiles: string[], e
       absolute: true,
       nodir: true,
       dot: true,
+      follow: false,
       ignore: combineIgnore(extraIgnore)
     });
     if (found.includes(absolute)) {
@@ -57,7 +61,40 @@ export async function findExistingFiles(root: string, relativeFiles: string[], e
       matches.push(...found);
     }
   }
-  return [...new Set(matches)].sort((a, b) => relativePath(root, a).localeCompare(relativePath(root, b)));
+  const deduped = [...new Set(matches)];
+  const filtered = await keepOnlyInsideRoot(root, deduped);
+  return filtered.sort((a, b) => relativePath(root, a).localeCompare(relativePath(root, b)));
+}
+
+// Defense against symlink-escape disclosure: a malicious workspace must not be
+// able to make the scanner read files outside the scan root by shipping a
+// symlink (e.g. a SKILL.md that points at ~/.ssh/id_rsa). We resolve every
+// matched path with fs.realpath and drop anything whose real location escapes
+// the resolved scan root. Intra-workspace symlinks (which resolve back inside
+// the root) remain scannable.
+async function keepOnlyInsideRoot(root: string, matches: string[]): Promise<string[]> {
+  if (matches.length === 0) return matches;
+  let realRoot: string;
+  try {
+    realRoot = await fs.realpath(root);
+  } catch {
+    realRoot = path.resolve(root);
+  }
+  const realRootWithSep = realRoot.endsWith(path.sep) ? realRoot : `${realRoot}${path.sep}`;
+
+  const inside: string[] = [];
+  for (const match of matches) {
+    let real: string;
+    try {
+      real = await fs.realpath(match);
+    } catch {
+      continue;
+    }
+    if (real === realRoot || real.startsWith(realRootWithSep)) {
+      inside.push(match);
+    }
+  }
+  return inside;
 }
 
 function combineIgnore(extra: string[]): string[] {

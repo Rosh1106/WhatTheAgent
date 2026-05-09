@@ -8,6 +8,22 @@ release; breaking schema changes will be called out in the relevant section.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-10
+
+### Security
+
+- **Symlink-escape disclosure fix.** A malicious workspace could include a symlink (e.g. a `SKILL.md` pointing at `~/.ssh/id_rsa` or `~/.aws/credentials`) and `wta understand .` would follow it, scan the file, and emit its path and snippets into `report.html` and `understand.json`. Confirmed empirically against the prior release; an untrusted skill marketplace could weaponize this for local file disclosure.
+
+  Two layers of protection now:
+  1. `glob` is invoked with `follow: false`, preventing traversal through symlinked directories during the walk.
+  2. After globbing, every matched path is resolved with `fs.realpath`. Any file whose real location escapes the resolved scan root is dropped before it's read, parsed, or quoted into evidence. Intra-workspace symlinks (which resolve back inside the root) remain scannable.
+
+  Three regression tests in `tests/utils/fileWalker.test.ts` lock in the behaviour using the exact PoC that motivated the fix (file symlink escape, directory symlink escape, and a sanity check that ordinary nested files still scan).
+
+  No CVE has been requested; the impact is local information disclosure to the user running `wta`, not remote code execution. Users on 0.2.0 should upgrade.
+
+  Credit: discovered during dogfooding while writing this project's own threat model.
+
 ## [0.2.0] - 2026-05-09
 
 The "we're going public" release. Big visual + scope cleanup since 0.1.0 plus open-source scaffolding.
@@ -76,6 +92,7 @@ The first publishable cut of WhatTheAgent. Highlights:
 - Component IDs are slugs of full paths and remain unreadable for deeply nested skills; switching to `<basename>-<6char-hash>` is on the roadmap.
 - `wta probe` and `wta runtime` are plan-only.
 
-[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Rosh1106/WhatTheAgent/releases/tag/v0.1.0

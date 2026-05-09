@@ -54,7 +54,7 @@ program
   .name("whattheagent")
   .alias("wta")
   .description("Show what your AI agent can actually do by discovering local capabilities and risky chains.")
-  .version("0.2.0");
+  .version("0.2.1");
 
 program
   .command("understand")
