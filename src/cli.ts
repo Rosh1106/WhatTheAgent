@@ -16,7 +16,7 @@ import { formatAgentPlanSummary, formatCompatibilitySummary, formatDiffSummary, 
 import { renderAgentInstructions, type AgentInstructionTarget } from "./output/agentInstructions.js";
 import { renderFixPlan } from "./output/fixPlan.js";
 import { renderHtmlReport } from "./output/htmlReport.js";
-import { stableJson, writeJsonFile, writeScanOutputs, writeUnderstandOutputs } from "./output/jsonWriter.js";
+import { buildChatSummaryForDiff, buildChatSummaryForUnderstand, stableJson, writeChatSummary, writeJsonFile, writeScanOutputs, writeUnderstandOutputs } from "./output/jsonWriter.js";
 import { renderMarkdownReport } from "./output/markdownReport.js";
 import { formatPersonalBaselineDiffSummary, formatPersonalBaselineSummary } from "./output/personalAgentFormatter.js";
 
@@ -43,6 +43,7 @@ interface GlobalOptions {
   reason?: string;
   policy?: string;
   workspace?: string;
+  chat?: boolean;
 }
 
 function collectExclude(value: string, previous: string[] = []): string[] {
@@ -71,20 +72,30 @@ program
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
   .option("--exclude <pattern>", "extra glob pattern to ignore (repeatable, comma-separated)", collectExclude, [])
   .option("--open", "open the rendered HTML report in the default browser")
+  .option("--chat", "emit a phone-readable chat summary plus an actions JSON for personal-agent integrations")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
       const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile), excludePatterns: options.exclude });
       const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
       const filesWritten = await writeUnderstandOutputs(outputDir, result);
+      const chatSummary = options.chat ? buildChatSummaryForUnderstand(result) : undefined;
+      if (chatSummary) {
+        const chatFiles = await writeChatSummary(outputDir, chatSummary);
+        filesWritten.push(...chatFiles);
+      }
       if (options.open) await openInBrowser(path.join(outputDir, "report.html"));
       if (options.quiet) return;
       if (options.ui) {
         process.stdout.write(`WhatTheAgent UI bundle written\n\n- ${path.join(outputDir, "report.html")}\n`);
         return;
       }
+      if (chatSummary && !options.json && !options.html && !options.forAgent) {
+        process.stdout.write(`${chatSummary.message}\n`);
+        return;
+      }
       if (options.json) {
-        process.stdout.write(stableJson(result));
+        process.stdout.write(stableJson(chatSummary ?? result));
         return;
       }
       if (options.html) {
@@ -127,6 +138,7 @@ program
   .option("--no-color", "disable color output")
   .option("--quiet", "suppress stdout")
   .option("--output <dir>", "write baseline diff and policy proposal files", ".wta")
+  .option("--chat", "emit a phone-readable chat summary plus an actions JSON for personal-agent integrations")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       const baselineFile = path.resolve(workspace, options.baseline ?? ".wta/baseline.json");
@@ -134,8 +146,17 @@ program
       const diff = await diffPersonalAgentBaseline(workspace, baselineFile, profile);
       const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
       const filesWritten = await writePersonalDiffOutputs(outputDir, diff);
+      const chatSummary = options.chat ? buildChatSummaryForDiff(diff) : undefined;
+      if (chatSummary) {
+        const chatFiles = await writeChatSummary(outputDir, chatSummary);
+        filesWritten.push(...chatFiles);
+      }
       if (options.quiet) return;
-      process.stdout.write(options.json ? stableJson(diff) : formatPersonalBaselineDiffSummary(diff, { filesWritten }));
+      if (chatSummary && !options.json) {
+        process.stdout.write(`${chatSummary.message}\n`);
+        return;
+      }
+      process.stdout.write(options.json ? stableJson(chatSummary ?? diff) : formatPersonalBaselineDiffSummary(diff, { filesWritten }));
     });
   });
 

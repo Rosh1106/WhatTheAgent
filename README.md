@@ -264,6 +264,37 @@ wta ack mcp.github --reason "Read-only GitHub MCP, approved"
 
 Without an explicit capability, `wta ack` reads the current scan and acknowledges every capability that component has. Re-running an ack is a no-op — duplicates are detected by `(component, capability)`.
 
+## Chat-style summary for personal agents (Hermes / OpenClaw / Telegram bots)
+
+If your agent talks to you over chat, `report.html` is the wrong UI. Use `--chat`:
+
+```bash
+wta understand .  --chat            # phone-readable markdown to stdout
+wta understand .  --chat --json     # structured { message, items[], actions } for the agent
+wta diff-baseline . --chat --json   # same shape, only newly added skills
+```
+
+The chat output looks like this:
+
+```
+🔴 1 new skill · 1 new risk chain
+
+invoice-review (Skill)
+   skills/invoice-review/SKILL.md
+   credential_access → external_send
+   data exfiltration
+   Component can read credentials and send data externally.
+
+What do you want to do?
+   ✅ approve — I trust this, add to policy
+   🛡  guardrail — require approval / scope it down
+   🚫 remove — delete it
+```
+
+Both files also land at `.wta/chat-message.md` (the markdown above) and `.wta/chat-actions.json` (per-item `{approve, guardrail, remove}` commands keyed to `wta ack`).
+
+A ready-to-drop-in skill that orchestrates this conversation is at [skills/whattheagent-safety-check.skill.md](skills/whattheagent-safety-check.skill.md). It tells the agent: run `wta diff-baseline --chat --json`, post `message` verbatim to the user, listen for "approve / guardrail / remove" intent, and run the matching command from `actions[]`. It explicitly forbids approving without a user reason, deleting files, or paraphrasing the message — the chat output is already designed to fit a phone screen.
+
 `understand` writes:
 
 ```text
