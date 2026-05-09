@@ -1,8 +1,21 @@
 # WhatTheAgent
 
-WhatTheAgent shows what your AI agent is really doing.
+<p align="center">
+  <img src="readme/hero.svg" alt="WhatTheAgent — local-first capability discovery for AI agents. Discovers skills, MCP servers, scripts and configs, then detects risky capability chains such as credential_access + external_send = data exfiltration." width="100%"/>
+</p>
 
-Run one command to see your agent's skills, tools, scripts, MCP servers, secrets, external services, risky chains, and suggested guardrails.
+**WhatTheAgent shows what your AI agent can actually do.**
+
+It scans an agent workspace locally — no LLM calls, no uploads — discovers every skill, MCP server, script, and config, and surfaces the *capability chains* that matter: e.g. a skill that can read credentials *and* send to a webhook is flagged as a Data Exfiltration risk, with concrete fixes you can hand to your coding agent.
+
+```bash
+npm install -g whattheagent
+wta understand . --output .wta
+```
+
+- **Catches what single-capability scanners miss.** Each tool sees one risk; chains are emergent.
+- **Local and static.** No login, no upload, no LLM, no script execution, no MCP server startup.
+- **Built for AI workflows.** Emits human HTML, agent-readable JSON, and a fix plan for Codex / Claude Code / Cursor / OpenClaw / Hermes.
 
 ## Install
 

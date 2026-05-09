@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="wta-hero-title wta-hero-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title id="wta-hero-title">WhatTheAgent</title>
+  <desc id="wta-hero-desc">WhatTheAgent scans an AI agent workspace, discovers capabilities across skills, MCP servers, and scripts, and detects risky capability chains such as credential access combined with external send equals data exfiltration.</desc>
+
+  <defs>
+    <linearGradient id="wta-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </linearGradient>
+    <linearGradient id="wta-accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="wta-warn" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#EF4444"/>
+    </linearGradient>
+    <filter id="wta-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="wta-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E293B" stroke-width="1"/>
+    </pattern>
+    <symbol id="wta-icon-skill" viewBox="0 0 24 24">
+      <path d="M4 5h12l4 4v10H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M16 5v4h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M7 12h10M7 15h10M7 18h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="wta-icon-mcp" viewBox="0 0 24 24">
+      <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="9" cy="12" r="1.4" fill="currentColor"/>
+      <path d="M12 12h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="wta-icon-script" viewBox="0 0 24 24">
+      <path d="M8 7l-4 5 4 5M16 7l4 5-4 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="wta-icon-shield" viewBox="0 0 24 24">
+      <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+
+  <rect width="1200" height="520" rx="18" fill="url(#wta-bg)"/>
+  <rect width="1200" height="520" rx="18" fill="url(#wta-grid)" opacity="0.35"/>
+
+  <g transform="translate(48 44)">
+    <g>
+      <circle cx="16" cy="16" r="16" fill="url(#wta-accent)"/>
+      <path d="M9 16l5 5 9-10" fill="none" stroke="#0B1220" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="46" y="22" fill="#F8FAFC" font-size="26" font-weight="700" letter-spacing="0.2">WhatTheAgent</text>
+    <text x="46" y="44" fill="#94A3B8" font-size="14" font-weight="500" letter-spacing="0.4">Local-first capability discovery for AI agents</text>
+  </g>
+
+  <text x="48" y="148" fill="#F8FAFC" font-size="44" font-weight="800" letter-spacing="-0.5">See what your agent can actually do.</text>
+  <text x="48" y="186" fill="#CBD5E1" font-size="18" font-weight="500">One command. Local scan. Catches risky capability chains before they ship.</text>
+
+  <g transform="translate(48 240)">
+    <rect width="320" height="220" rx="14" fill="#111B2E" stroke="#1E293B" stroke-width="1"/>
+    <text x="20" y="32" fill="#94A3B8" font-size="11" font-weight="700" letter-spacing="2">WORKSPACE</text>
+    <text x="20" y="58" fill="#F8FAFC" font-size="18" font-weight="700">Surfaces it discovers</text>
+
+    <g transform="translate(20 80)" fill="#34D399">
+      <use href="#wta-icon-skill" x="0" y="0" width="20" height="20" color="#34D399"/>
+      <text x="32" y="15" fill="#E2E8F0" font-size="14" font-weight="600">Skills · SKILL.md</text>
+    </g>
+    <g transform="translate(20 112)">
+      <use href="#wta-icon-mcp" x="0" y="0" width="20" height="20" color="#22D3EE"/>
+      <text x="32" y="15" fill="#E2E8F0" font-size="14" font-weight="600">MCP servers · cursor / claude / vscode</text>
+    </g>
+    <g transform="translate(20 144)">
+      <use href="#wta-icon-script" x="0" y="0" width="20" height="20" color="#A78BFA"/>
+      <text x="32" y="15" fill="#E2E8F0" font-size="14" font-weight="600">Scripts · py · js · ts · sh</text>
+    </g>
+    <g transform="translate(20 176)">
+      <use href="#wta-icon-shield" x="0" y="0" width="20" height="20" color="#F59E0B"/>
+      <text x="32" y="15" fill="#E2E8F0" font-size="14" font-weight="600">Configs · policies · memory</text>
+    </g>
+  </g>
+
+  <g transform="translate(388 240)" fill="none">
+    <path d="M0 110 L72 110" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <path d="M65 105 L75 110 L65 115 Z" fill="#475569"/>
+  </g>
+
+  <g transform="translate(470 240)">
+    <rect width="280" height="220" rx="14" fill="#0B1F2A" stroke="#134E4A" stroke-width="1.5"/>
+    <text x="20" y="32" fill="#5EEAD4" font-size="11" font-weight="700" letter-spacing="2">ANALYZE</text>
+    <text x="20" y="58" fill="#F8FAFC" font-size="18" font-weight="700">Capability graph</text>
+    <g transform="translate(140 130)">
+      <circle r="44" fill="none" stroke="url(#wta-accent)" stroke-width="2" filter="url(#wta-glow)"/>
+      <circle r="32" fill="#0F172A" stroke="#22D3EE" stroke-width="1"/>
+      <text y="-2" text-anchor="middle" fill="#5EEAD4" font-size="11" font-weight="700" letter-spacing="1.5">SCAN</text>
+      <text y="14" text-anchor="middle" fill="#F8FAFC" font-size="14" font-weight="800">.wta</text>
+    </g>
+    <text x="140" y="200" text-anchor="middle" fill="#94A3B8" font-size="12" font-weight="500">no LLM · no upload · static</text>
+  </g>
+
+  <g transform="translate(770 240)" fill="none">
+    <path d="M0 110 L72 110" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <path d="M65 105 L75 110 L65 115 Z" fill="#475569"/>
+  </g>
+
+  <g transform="translate(852 240)">
+    <rect width="300" height="220" rx="14" fill="#1F1212" stroke="#7F1D1D" stroke-width="1.5"/>
+    <text x="20" y="32" fill="#FCA5A5" font-size="11" font-weight="700" letter-spacing="2">RISK CHAIN DETECTED</text>
+
+    <g transform="translate(20 60)">
+      <rect width="120" height="32" rx="6" fill="#1E293B" stroke="#475569"/>
+      <text x="60" y="21" text-anchor="middle" fill="#E2E8F0" font-size="12" font-weight="700">credential_access</text>
+    </g>
+    <text x="148" y="80" fill="#FCA5A5" font-size="20" font-weight="800">+</text>
+    <g transform="translate(168 60)">
+      <rect width="112" height="32" rx="6" fill="#1E293B" stroke="#475569"/>
+      <text x="56" y="21" text-anchor="middle" fill="#E2E8F0" font-size="12" font-weight="700">external_send</text>
+    </g>
+
+    <path d="M140 110 L140 124" stroke="#7F1D1D" stroke-width="1.5"/>
+    <path d="M135 122 L140 130 L145 122 Z" fill="#7F1D1D"/>
+
+    <g transform="translate(20 138)">
+      <rect width="260" height="58" rx="8" fill="url(#wta-warn)"/>
+      <text x="20" y="26" fill="#0B1220" font-size="13" font-weight="800" letter-spacing="1.5">DATA EXFILTRATION</text>
+      <text x="20" y="46" fill="#0B1220" font-size="11" font-weight="700">CRITICAL · suggested guardrails: human approval, allowlist</text>
+    </g>
+  </g>
+</svg>
