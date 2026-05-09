@@ -17,6 +17,33 @@ wta understand . --output .wta
 - **Local and static.** No login, no upload, no LLM, no script execution, no MCP server startup.
 - **Built for AI workflows.** Emits human HTML, agent-readable JSON, and a fix plan for Codex / Claude Code / Cursor / OpenClaw / Hermes.
 
+## What you'll see
+
+<p align="center">
+  <img src="readme/tiers.svg" alt="Three tiers of findings: Inventory (informational, e.g. read_file in summarize-notes.py), Needs Attention (powerful but often legitimate, e.g. Burp MCP execute_code or a GH_TOKEN env var), and Risk Chain (specific dangerous combinations like credential_access + external_send)." width="100%"/>
+</p>
+
+WhatTheAgent doesn't dump every capability into one big alarm list. Findings land in one of three tiers:
+
+- **Inventory** — "your skill reads files." Useful to know, no action needed.
+- **Needs attention** — "your agent has Burp wired up via MCP." Often legitimate, but you should *acknowledge* it once. Approve in policy or scope it down.
+- **Risk chain** — "this skill can read `.env` AND post to a webhook." That's the data-exfil shape, regardless of intent. Add a guardrail before the next run.
+
+The point isn't to flag everything. The point is to make *intentional* capabilities cheap to acknowledge and *unintentional* combinations impossible to miss.
+
+### "Is Burp risky? It's a legitimate tool."
+
+Yes — and yes. The flag is correct: Burp Suite *can* execute code and *does* access the network, and an LLM driving it has a remote-execution-capable tool one prompt away. WhatTheAgent surfaces it under **Needs attention**, not as malicious. Acknowledge it once in [your policy file](#policy):
+
+```yaml
+expected:
+  - component: "mcp.burp"
+    capability: "execute_code"
+    reason: "Burp Suite MCP — security testing tool, intentional."
+```
+
+After that, Burp moves to "Expected" and only **changes** to its capabilities reappear.
+
 ## Install
 
 WhatTheAgent is published on npm:
