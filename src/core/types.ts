@@ -199,6 +199,7 @@ export interface ScanResult {
 export interface ScanOptions {
   allowMcpExec?: boolean;
   profile?: AgentProfile;
+  excludePatterns?: string[];
 }
 
 export type AgentProfile = "workspace" | "personal-agent" | "openclaw" | "hermes";

@@ -234,6 +234,15 @@ Agent-friendly flags:
 wta understand . --json --no-color --quiet --output .wta
 ```
 
+Skip extra paths beyond the built-in defaults:
+
+```bash
+wta understand . --exclude vendor --exclude '**/*.generated.*'
+wta understand . --exclude vendor,scratch,**/build/**
+```
+
+`--exclude` is repeatable, comma-separated, and accepts either a bare directory name (auto-wrapped to `**/<name>/**`) or any glob. Defaults already skip `node_modules`, `dist`, `.venv`, `__pycache__`, `.claude/plugins/marketplaces`, `.claude/plugins/cache`, and similar caches.
+
 `understand` writes:
 
 ```text

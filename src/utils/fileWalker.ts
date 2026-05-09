@@ -28,19 +28,19 @@ const ignore = [
   "**/whattheagent.risk-report.md"
 ];
 
-export async function findFiles(root: string, pattern: string | string[]): Promise<string[]> {
+export async function findFiles(root: string, pattern: string | string[], extraIgnore: string[] = []): Promise<string[]> {
   const matches = await glob(pattern, {
     cwd: root,
     absolute: true,
     nodir: true,
     dot: true,
-    ignore
+    ignore: combineIgnore(extraIgnore)
   });
 
   return matches.sort((a, b) => relativePath(root, a).localeCompare(relativePath(root, b)));
 }
 
-export async function findExistingFiles(root: string, relativeFiles: string[]): Promise<string[]> {
+export async function findExistingFiles(root: string, relativeFiles: string[], extraIgnore: string[] = []): Promise<string[]> {
   const matches: string[] = [];
   for (const file of relativeFiles) {
     const absolute = path.join(root, file);
@@ -49,7 +49,7 @@ export async function findExistingFiles(root: string, relativeFiles: string[]): 
       absolute: true,
       nodir: true,
       dot: true,
-      ignore
+      ignore: combineIgnore(extraIgnore)
     });
     if (found.includes(absolute)) {
       matches.push(absolute);
@@ -58,4 +58,17 @@ export async function findExistingFiles(root: string, relativeFiles: string[]): 
     }
   }
   return [...new Set(matches)].sort((a, b) => relativePath(root, a).localeCompare(relativePath(root, b)));
+}
+
+function combineIgnore(extra: string[]): string[] {
+  if (extra.length === 0) return ignore;
+  return [...ignore, ...extra.map(normalizeUserPattern)];
+}
+
+export function normalizeUserPattern(pattern: string): string {
+  const trimmed = pattern.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.includes("*") || trimmed.includes("?") || trimmed.includes("[")) return trimmed;
+  const stripped = trimmed.replace(/^\.?\//, "").replace(/\/+$/, "");
+  return `**/${stripped}/**`;
 }

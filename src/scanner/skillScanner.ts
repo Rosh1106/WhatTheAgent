@@ -13,15 +13,15 @@ export interface SkillScanResult {
   findings: Finding[];
 }
 
-export async function scanSkills(root: string): Promise<SkillScanResult> {
-  const skillFiles = await findFiles(root, "**/SKILL.md");
+export async function scanSkills(root: string, extraIgnore: string[] = []): Promise<SkillScanResult> {
+  const skillFiles = await findFiles(root, "**/SKILL.md", extraIgnore);
   const skills: SkillComponent[] = [];
   const scripts: ScriptScanResult[] = [];
   const findings: Finding[] = [];
 
   for (const skillFile of skillFiles) {
     const parsed = await parseSkill(root, skillFile);
-    const scriptPaths = await findFiles(parsed.directory, scriptFilePattern);
+    const scriptPaths = await findFiles(parsed.directory, scriptFilePattern, extraIgnore);
     const skillScriptRelPaths = scriptPaths.map((scriptPath) => relativePath(root, scriptPath)).sort();
 
     parsed.component.metadata.scripts = skillScriptRelPaths;

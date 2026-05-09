@@ -36,6 +36,11 @@ interface GlobalOptions {
   profile?: AgentProfile;
   baseline?: string;
   force?: boolean;
+  exclude?: string[];
+}
+
+function collectExclude(value: string, previous: string[] = []): string[] {
+  return [...previous, ...value.split(",").map((entry) => entry.trim()).filter(Boolean)];
 }
 
 const program = new Command();
@@ -58,10 +63,11 @@ program
   .option("--output <dir>", "write understand outputs to a directory", ".wta")
   .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
+  .option("--exclude <pattern>", "extra glob pattern to ignore (repeatable, comma-separated)", collectExclude, [])
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
-      const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile) });
+      const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile), excludePatterns: options.exclude });
       const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
       const filesWritten = await writeUnderstandOutputs(outputDir, result);
       if (options.quiet) return;
@@ -252,10 +258,11 @@ program
   .option("--output <file>", "write scan JSON plus graph and Markdown report")
   .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
+  .option("--exclude <pattern>", "extra glob pattern to ignore (repeatable, comma-separated)", collectExclude, [])
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
-      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile) });
+      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile), excludePatterns: options.exclude });
       const filesWritten = options.output ? await writeScanOutputs(options.output, scan) : [];
       if (options.quiet) return;
       if (options.json) {
@@ -275,10 +282,11 @@ program
   .option("--output <file>", "write graph JSON")
   .option("--profile <profile>", "workspace profile: workspace, personal-agent, openclaw, or hermes", "workspace")
   .option("--allow-mcp-exec", "reserved for future MCP execution mode")
+  .option("--exclude <pattern>", "extra glob pattern to ignore (repeatable, comma-separated)", collectExclude, [])
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
-      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile) });
+      const scan = await scanWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile), excludePatterns: options.exclude });
       if (options.output) await writeJsonFile(options.output, scan.graph);
       if (options.quiet) return;
       if (options.json || !options.output) {

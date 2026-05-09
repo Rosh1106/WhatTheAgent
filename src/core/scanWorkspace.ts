@@ -31,10 +31,11 @@ const riskLevels: RiskLevel[] = ["low", "medium", "high", "critical"];
 
 export async function scanWorkspace(workspacePath: string, options: ScanOptions = {}): Promise<ScanResult> {
   const root = path.resolve(workspacePath);
-  const skillScan = await scanSkills(root);
+  const extraIgnore = options.excludePatterns ?? [];
+  const skillScan = await scanSkills(root, extraIgnore);
   const mcpScan = await scanMcpConfigs(root, options.allowMcpExec);
-  const personalScan = await scanPersonalAgentSurfaces(root, options.profile);
-  const standaloneScripts = await scanStandaloneScripts(root, new Set(skillScan.scripts.map((script) => script.component.path ?? "")));
+  const personalScan = await scanPersonalAgentSurfaces(root, options.profile, extraIgnore);
+  const standaloneScripts = await scanStandaloneScripts(root, new Set(skillScan.scripts.map((script) => script.component.path ?? "")), extraIgnore);
 
   const components = sortComponents([
     ...skillScan.skills,
@@ -69,8 +70,8 @@ export async function scanWorkspace(workspacePath: string, options: ScanOptions 
   };
 }
 
-async function scanStandaloneScripts(root: string, knownScriptPaths: Set<string>) {
-  const scriptPaths = await findFiles(root, scriptFilePattern);
+async function scanStandaloneScripts(root: string, knownScriptPaths: Set<string>, extraIgnore: string[] = []) {
+  const scriptPaths = await findFiles(root, scriptFilePattern, extraIgnore);
   const standalone = scriptPaths.filter((scriptPath) => !knownScriptPaths.has(relativePath(root, scriptPath)));
   const results = [];
   for (const scriptPath of standalone) {

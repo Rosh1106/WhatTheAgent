@@ -25,14 +25,14 @@ const personalSkillFiles = [
   "**/*.skill.md"
 ];
 
-export async function scanPersonalAgentSurfaces(root: string, profile: AgentProfile | undefined): Promise<PersonalAgentScanResult> {
+export async function scanPersonalAgentSurfaces(root: string, profile: AgentProfile | undefined, extraIgnore: string[] = []): Promise<PersonalAgentScanResult> {
   if (!isPersonalProfile(profile)) {
     return { components: [], findings: [] };
   }
   const activeProfile = profile;
 
-  const identityMatches = await findFiles(root, identityFiles);
-  const skillMatches = [...new Set(await findFiles(root, personalSkillFiles))]
+  const identityMatches = await findFiles(root, identityFiles, extraIgnore);
+  const skillMatches = [...new Set(await findFiles(root, personalSkillFiles, extraIgnore))]
     .filter((file) => path.basename(file) !== "SKILL.md");
 
   const components: Component[] = [];
