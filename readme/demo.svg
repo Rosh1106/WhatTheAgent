@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img" aria-labelledby="demo-title demo-desc" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace">
+  <title id="demo-title">WhatTheAgent demo</title>
+  <desc id="demo-desc">An animated terminal showing wta understand --chat detecting a Data Exfiltration risk chain in an invoice-review skill, then the user piping a reason to wta ack, and the policy file being updated.</desc>
+
+  <defs>
+    <linearGradient id="termBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#0B1220"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="480" rx="14" fill="url(#termBg)"/>
+
+  <rect x="0" y="0" width="800" height="34" rx="14" fill="#1E293B"/>
+  <rect x="0" y="20" width="800" height="14" fill="#1E293B"/>
+  <circle cx="20" cy="17" r="6" fill="#EF4444"/>
+  <circle cx="42" cy="17" r="6" fill="#FBBF24"/>
+  <circle cx="64" cy="17" r="6" fill="#22C55E"/>
+  <text x="400" y="22" text-anchor="middle" fill="#94A3B8" font-size="12" font-weight="600">whattheagent · demo</text>
+
+  <g font-size="14" fill="#E2E8F0">
+    <g opacity="0">
+      <text x="24" y="68"><tspan fill="#5EEAD4">$</tspan> wta understand . --chat</text>
+      <animate attributeName="opacity" values="0;1;1;1;1;1;1;0" keyTimes="0;0.04;0.93;0.96;0.97;0.98;0.99;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="24" y="100" fill="#FCA5A5" font-weight="700">🔴 1 risk chain · 2 items need attention</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.10;0.13;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="24" y="134" fill="#FCA5A5" font-weight="700">🔴 invoice-review</text><text x="172" y="134" fill="#94A3B8">(Skill)</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.18;0.21;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="48" y="156" fill="#94A3B8">skills/invoice-review/SKILL.md</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.22;0.25;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="48" y="178">
+        <tspan fill="#F1F5F9">credential_access</tspan>
+        <tspan fill="#FCA5A5" font-weight="700"> → </tspan>
+        <tspan fill="#F1F5F9">external_send</tspan>
+      </text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.27;0.30;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="48" y="200" fill="#FBBF24">data exfiltration</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.31;0.34;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="48" y="222" fill="#94A3B8">Component can read credentials and send data externally.</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.35;0.38;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="24" y="262" fill="#CBD5E1">What do you want to do?</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.40;0.43;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+    <g opacity="0">
+      <text x="48" y="284">
+        <tspan fill="#86EFAC">✅ approve</tspan>
+        <tspan fill="#475569">  ·  </tspan>
+        <tspan fill="#FBBF24">🛡 guardrail</tspan>
+        <tspan fill="#475569">  ·  </tspan>
+        <tspan fill="#F87171">🚫 remove</tspan>
+      </text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.43;0.46;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="24" y="332"><tspan fill="#5EEAD4">$</tspan> echo "internal finance pipeline" <tspan fill="#94A3B8">|</tspan></text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.55;0.58;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+    <g opacity="0">
+      <text x="48" y="352">wta ack skill.invoice-review --reason-from-stdin</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.62;0.65;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g opacity="0">
+      <text x="24" y="394" fill="#86EFAC">Added 1 expected entry to wta.policy.yaml</text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.74;0.77;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+    <g opacity="0">
+      <text x="24" y="416">
+        <tspan fill="#86EFAC">+ </tspan>
+        <tspan fill="#E2E8F0">skill.invoice-review · external_send</tspan>
+        <tspan fill="#86EFAC">  ✓</tspan>
+      </text>
+      <animate attributeName="opacity" values="0;0;1;1;1;1;0" keyTimes="0;0.79;0.82;0.93;0.96;0.98;1" dur="14s" repeatCount="indefinite"/>
+    </g>
+
+    <g>
+      <rect x="24" y="446" width="9" height="16" fill="#5EEAD4">
+        <animate attributeName="opacity" values="0;0;1;0;1;0;1;0;1" keyTimes="0;0.05;0.1;0.15;0.2;0.25;0.3;0.35;1" dur="14s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+  </g>
+</svg>
