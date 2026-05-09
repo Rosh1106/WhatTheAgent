@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/Rosh1106/WhatTheAgent/security/advisories/new
+    about: For security vulnerabilities, please use a private security advisory rather than a public issue. See SECURITY.md.
+  - name: Question / discussion
+    url: https://github.com/Rosh1106/WhatTheAgent/discussions
+    about: For open-ended questions, ideas, and conversations.
