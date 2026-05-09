@@ -352,84 +352,42 @@ Runtime enforcement answers:
 
 ## Milestones
 
-### Milestone 1: `wta understand`
+### Milestone 1 — shipped
 
-Add:
+`wta understand` with terminal summary, `understand.json`, `capability-graph.json`, `fix-plan.md`, self-contained `report.html` (tier-organized, dark/light mode, embedded SVG), and a separate `visual-chains.svg`. `--open` opens the report in the browser; `--exclude` adds glob patterns on top of the built-in default ignores.
 
-```bash
-wta understand .
-wta understand . --json
-wta understand . --html
-wta understand . --for-agent
-```
+### Milestone 2 — partially shipped
 
-Outputs:
+Control detection covers `human_approval`, `policy_file`, and a handful of others derived from policy YAML and skill body markers. Several control types from `AGENTS.md` (e.g. `audit_logging`, `delegation_policy`, `payment_approval`) are still placeholder-only.
 
-- human-readable terminal summary
-- `understand.json`
-- `capability-graph.json`
-- `fix-plan.md`
-- basic self-contained `report.html`
+### Milestone 3 — shipped
 
-### Milestone 2: control detection
+`wta plan . --for-codex` / `--for-claude` emits a per-component plan with target files, required changes, acceptance criteria, and verification commands. The HTML report leads each card with the component label, type, and path so the user can identify the underlying service at a glance.
 
-Add:
+### Milestone 4 — shipped
 
-- policy file detection
-- command allowlist detection
-- external domain allowlist detection
-- secret scoping/redaction detection
-- CI gate detection
-- sandbox/read-only/network restrictions detection
+Personal-agent flow:
 
-### Milestone 3: visual workbench
+- `wta baseline`, `wta diff-baseline`
+- `wta init-policy --from-scan` seeds `expected[]` from the current scan
+- `wta ack` / `wta ack-batch` to acknowledge intentional capabilities (with `--reason-from-stdin` for shell-safe agent integrations)
+- `wta understand . --chat` and `wta diff-baseline . --chat` produce a phone-readable markdown summary plus a structured actions JSON for chat-driving agents
+- A ready-made Hermes / OpenClaw skill at `skills/whattheagent-safety-check.skill.md`
 
-Add:
+### Milestone 5 — preview
 
-```bash
-wta understand . --ui
-```
+`wta probe` emits a sandbox probe plan but does not execute anything. Future versions will add controlled probes for file read/write, shell execution, network access, fake secrets/canary tokens, external send, package install, and delegation — each with explicit user consent.
 
-The UI should render:
+### Milestone 6 — preview
 
-- graph view
-- selected node details
-- fix center
-- implementation plan generator
+`wta runtime` emits a runtime policy preview in observe / warn / approval / enforce modes. Future versions will hook into agent runtimes for live observability and enforcement.
 
-### Milestone 4: agent handoff
+### Next focus
 
-Add:
-
-```bash
-wta plan . --for-codex
-wta plan . --for-claude
-```
-
-The plan should include:
-
-- current gaps
-- target files
-- required changes
-- acceptance criteria
-- test plan
-
-### Milestone 5: sandbox probing
-
-Add controlled probes for:
-
-- file read
-- file write
-- shell execution
-- network access
-- fake secrets/canary tokens
-- external send
-- package install
-- delegation
-
-### Milestone 6: runtime protection
-
-Add observe/warn/approval/enforce modes.
+- Tighten control detection to cover all 14 control types from `AGENTS.md`.
+- Cap `fix-plan.md` and `understand.json` size on large workspaces (currently grow linearly with findings).
+- Ship a "known-good tools" catalog (Burp / GitHub MCP / Stripe MCP / Linear / Slack / etc.) so the report presents them as *powerful-but-recognised*, distinct from unknown scripts.
+- Improve component IDs from full-path slugs to `<basename>-<6char-hash>` for readability in `fix-plan.md` and chat output.
 
 ## Non-goals for now
 

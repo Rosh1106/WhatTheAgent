@@ -248,9 +248,67 @@ Acceptance criteria:
 - Existing `scan`, `graph`, `diff`, and `report` commands still work.
 - `npm run typecheck` passes.
 - `npm run build` passes.
+- `npm test` passes (Vitest, currently 173 tests).
 - `wta understand examples/risky-agent` prints a human-readable understanding report.
 - `wta understand examples/risky-agent --json` emits deterministic JSON.
 - `wta understand examples/risky-agent --html --output .wta` writes `.wta/report.html`.
 - `wta understand examples/risky-agent --for-agent --output .wta` writes `.wta/fix-plan.md` and `.wta/agent-context.json`.
 - MCP servers are shown as tool servers, not as the whole product category.
 - Output is capability-first and control-gap-first.
+
+## Current architecture (snapshot)
+
+```
+src/
+  cli.ts                       # Commander entry; one block per command
+  core/
+    scanWorkspace.ts           # orchestrates skill/MCP/script/personal scans
+    understandWorkspace.ts     # turns ScanResult into UnderstandResult
+    findingLifecycle.ts        # detected → inventory / needs_attention / etc.
+    personalAgentBaseline.ts   # baseline / diff / policy proposal
+    ackPolicy.ts               # wta ack + wta ack-batch policy mutation
+    planWorkspace.ts           # wta plan implementation tasks
+    probePlan.ts, runtimePlan.ts (preview only)
+    types.ts                   # all shared types
+  scanner/                     # finds files (skills, MCP configs, scripts, personal)
+  parser/                      # parses skills (gray-matter w/ safeMatter fallback)
+                               # and MCP configs (jsonc-parser, env redaction)
+  risk/
+    classifier.ts              # capability → risk level
+    chainDetector.ts           # capability sets → known risk chains
+    sensitivity.ts             # path/snippet sensitivity scoring
+  graph/                       # capability-graph builder + queries
+  output/
+    htmlReport.ts              # tier-organized report.html (light + dark)
+    visualChainsSvg.ts         # at-a-glance SVG of top chains and gaps
+    chatSummary.ts             # phone-readable + actions JSON for personal agents
+    consoleFormatter.ts        # terminal output for every command
+    fixPlan.ts                 # markdown for coding agents
+    agentInstructions.ts       # copy-paste prompts per target
+    jsonWriter.ts              # writes everything in .wta/
+    markdownReport.ts, personalAgentFormatter.ts
+  utils/
+    patterns.ts                # capability detection regexes (verb+object preferred)
+    fileWalker.ts              # glob wrapper + default ignores + --exclude support
+    normalize.ts               # secret redaction, slugify, stableId, snippet
+    safeRead.ts                # bounded file reads
+  clients/wellKnownClients.ts  # known agent client config paths
+```
+
+`tests/` mirrors `src/` and uses Vitest. Add a regression test for any detection change — the patterns.test.ts file in particular has both true-positive examples and the exact false-positive lines we sampled from real-world scans. Adding a pattern that would re-introduce one of those false positives must fail there.
+
+## What NOT to scan
+
+`src/utils/fileWalker.ts` keeps a default-ignore list including `node_modules`, `.git`, `dist`, `build`, `.venv`, `__pycache__`, `.claude/plugins/marketplaces`, `.claude/plugins/cache`, `.claude/projects`, and OS caches. The marketplace/cache excludes alone removed ~94% of false positives in the home-directory dogfooding test.
+
+If you add another high-volume third-party content path (e.g. a new IDE's plugin cache), add it to the default-ignore list. Do not silently lower detection precision to compensate.
+
+## Output schema stability
+
+`UnderstandResult`, `ScanResult`, and the chat-summary schemas are pre-1.0 but versioned by `schemaVersion: "0.1"`. Any breaking change to those schemas must:
+
+1. Bump the schema version.
+2. Note the change in `CHANGELOG.md`.
+3. Update the test in `tests/integration/fixtures.test.ts` that locks determinism.
+
+The `htmlReport.test.ts` determinism test asserts that the same input produces the same output. Keep that property.

@@ -121,12 +121,22 @@ wta ci . --fail-on high --output .wta
 
 ```text
 .wta/
-  understand.json
-  capability-graph.json
-  fix-plan.md
-  report.html
-  agent-context.json
+  understand.json         # full structured scan
+  capability-graph.json   # nodes/edges of agent surfaces and capabilities
+  fix-plan.md             # markdown for a coding agent to act on
+  report.html             # tier-organized self-contained report (light/dark)
+  visual-chains.svg       # at-a-glance risk-chains image
+  agent-context.json      # compact context for an agent
 ```
+
+If the workflow uses `--chat`, two additional files appear:
+
+```text
+  chat-message.md
+  chat-actions.json
+```
+
+The chat outputs are useful when the same scan needs to be re-posted into a Slack / Discord notification from CI — the markdown is already phone-readable and the actions JSON tells a follow-up step exactly which `wta ack` commands to run if a reviewer approves.
 
 Upload the full `.wta` directory as a workflow artifact.
 
