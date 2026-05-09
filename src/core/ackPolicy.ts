@@ -4,6 +4,28 @@ import type { Capability, ScanResult } from "./types.js";
 import { scanWorkspace } from "./scanWorkspace.js";
 import { starterPolicy } from "./personalAgentBaseline.js";
 
+export interface AckBatchItem {
+  componentId: string;
+  capability?: Capability;
+  reason?: string;
+}
+
+export interface AckBatchOptions {
+  workspaceRoot: string;
+  policyFile: string;
+  items: AckBatchItem[];
+  defaultReason?: string;
+  scan?: ScanResult;
+}
+
+export interface AckBatchResult {
+  policyFile: string;
+  added: AckEntry[];
+  alreadyPresent: AckEntry[];
+  skipped: Array<{ componentId: string; capability?: Capability; reason: string }>;
+  itemCount: number;
+}
+
 export interface AckEntry {
   componentId: string;
   capability: Capability;
@@ -138,4 +160,117 @@ async function fileExists(filePath: string): Promise<boolean> {
 
 function isMissing(error: unknown): boolean {
   return error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+export async function readReasonFromStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer));
+  }
+  const text = Buffer.concat(chunks).toString("utf8").trim();
+  if (!text) throw new Error("No reason was provided on stdin. Pipe a non-empty string in, e.g. `echo \"...\" | wta ack ...`.");
+  return text;
+}
+
+export async function ackBatchInPolicy(options: AckBatchOptions): Promise<AckBatchResult> {
+  if (options.items.length === 0) {
+    return { policyFile: options.policyFile, added: [], alreadyPresent: [], skipped: [], itemCount: 0 };
+  }
+
+  const scan = options.scan ?? await scanWorkspace(options.workspaceRoot);
+  const findingsByComponent = new Map<string, Capability[]>();
+  for (const finding of scan.findings) {
+    const list = findingsByComponent.get(finding.componentId) ?? [];
+    list.push(finding.capability);
+    findingsByComponent.set(finding.componentId, list);
+  }
+  const componentIds = new Set(scan.components.map((component) => component.id));
+
+  const expanded: AckEntry[] = [];
+  const skipped: AckBatchResult["skipped"] = [];
+  for (const item of options.items) {
+    const reason = item.reason ?? options.defaultReason;
+    if (!reason || !reason.trim()) {
+      skipped.push({ componentId: item.componentId, capability: item.capability, reason: "no reason supplied (item-level reason or --reason)" });
+      continue;
+    }
+    if (item.capability) {
+      expanded.push({ componentId: item.componentId, capability: item.capability, reason });
+      continue;
+    }
+    const detected = uniqueSorted(findingsByComponent.get(item.componentId) ?? []);
+    if (detected.length === 0 && !componentIds.has(item.componentId)) {
+      skipped.push({ componentId: item.componentId, reason: "component not found in scan and no explicit capability supplied" });
+      continue;
+    }
+    if (detected.length === 0) {
+      skipped.push({ componentId: item.componentId, reason: "component has no detected capabilities; specify one explicitly" });
+      continue;
+    }
+    for (const capability of detected) expanded.push({ componentId: item.componentId, capability, reason });
+  }
+
+  if (expanded.length === 0) {
+    return { policyFile: options.policyFile, added: [], alreadyPresent: [], skipped, itemCount: options.items.length };
+  }
+
+  const existing = await readExistingExpectedKeys(options.policyFile);
+  const seen = new Set<string>();
+  const toAdd: AckEntry[] = [];
+  const alreadyPresent: AckEntry[] = [];
+  for (const entry of expanded) {
+    const key = `${entry.componentId}:${entry.capability}`;
+    if (existing.has(key)) {
+      alreadyPresent.push(entry);
+      continue;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    toAdd.push(entry);
+  }
+
+  if (toAdd.length > 0) {
+    await appendToPolicy(options.policyFile, toAdd);
+  }
+
+  return { policyFile: options.policyFile, added: toAdd, alreadyPresent, skipped, itemCount: options.items.length };
+}
+
+export function parseAckBatchInput(raw: string): AckBatchItem[] {
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error("Empty input. Pipe a JSON array of ack items on stdin.");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Could not parse stdin as JSON: ${message}`);
+  }
+  if (!Array.isArray(parsed)) throw new Error("Expected a JSON array of objects with at least { componentId, reason }.");
+  return parsed.map((entry, index) => normalizeBatchItem(entry, index));
+}
+
+function normalizeBatchItem(value: unknown, index: number): AckBatchItem {
+  if (!value || typeof value !== "object") throw new Error(`Item ${index} is not an object.`);
+  const record = value as Record<string, unknown>;
+  const componentId = record.componentId;
+  if (typeof componentId !== "string" || !componentId.trim()) {
+    throw new Error(`Item ${index} is missing a string \"componentId\".`);
+  }
+  const item: AckBatchItem = { componentId: componentId.trim() };
+  if (typeof record.capability === "string" && record.capability.trim()) {
+    item.capability = record.capability.trim() as Capability;
+  }
+  if (typeof record.reason === "string" && record.reason.trim()) {
+    item.reason = record.reason.trim();
+  }
+  return item;
+}
+
+export async function readJsonFromStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer));
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }

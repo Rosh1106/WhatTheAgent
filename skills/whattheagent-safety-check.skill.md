@@ -64,7 +64,26 @@ Use WhatTheAgent to scan the personal-agent workspace, surface anything that nee
 
 5. **Execute the chosen branch per item.**
 
-   - **approve**: ask the user *why* (one short sentence), then run the exact command in `items[i].actions.approve.command`, replacing `<USER_REASON>` with the user's reason. Confirm: "Approved {label}. Saved to wta.policy.yaml."
+   - **approve (one item)**: ask the user *why* (one short sentence), then pipe their reason on stdin to avoid shell-escape pain:
+
+     ```bash
+     printf '%s' "<USER_REASON>" | wta ack <componentId> [<capability>] --reason-from-stdin
+     ```
+
+     Confirm: "Approved {label}. Saved to wta.policy.yaml."
+
+   - **approve (multiple items / "approve all")**: ask the user for one batch reason (or use a per-item one if they provide it), then send a single `wta ack-batch` call with a JSON array:
+
+     ```bash
+     cat <<'JSON' | wta ack-batch --reason "<USER_REASON>"
+     [
+       { "componentId": "<id1>" },
+       { "componentId": "<id2>" }
+     ]
+     JSON
+     ```
+
+     Read the resulting `added` / `alreadyPresent` / `skipped` counts and confirm: "Approved {N} items. {M} already in policy. {K} skipped (see logs)."
 
    - **guardrail**: do not run any command. Show the user the `actions.guardrail.hint` text, then tell them: "When you're ready, edit `wta.policy.yaml` (I can help) or run `wta init-policy . --from-scan` to seed it." Optionally help them write the YAML edit, but do not write the edit yourself unless the user explicitly says so.
 

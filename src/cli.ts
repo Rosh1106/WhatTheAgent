@@ -4,7 +4,7 @@ import path from "node:path";
 import { Command } from "commander";
 import { wellKnownClients } from "./clients/wellKnownClients.js";
 import { planWorkspace } from "./core/planWorkspace.js";
-import { ackInPolicy } from "./core/ackPolicy.js";
+import { ackBatchInPolicy, ackInPolicy, parseAckBatchInput, readJsonFromStdin, readReasonFromStdin } from "./core/ackPolicy.js";
 import { createPersonalAgentBaseline, diffPersonalAgentBaseline, seededPolicyFromScan, starterPolicy, writePersonalBaselineOutputs, writePersonalDiffOutputs, writePolicyContent } from "./core/personalAgentBaseline.js";
 import { buildProbePlan } from "./core/probePlan.js";
 import { buildRuntimePlan } from "./core/runtimePlan.js";
@@ -41,6 +41,7 @@ interface GlobalOptions {
   open?: boolean;
   fromScan?: boolean;
   reason?: string;
+  reasonFromStdin?: boolean;
   policy?: string;
   workspace?: string;
   chat?: boolean;
@@ -194,14 +195,19 @@ program
   .argument("<component>", "component id to acknowledge (e.g. mcp.burp or skill.invoice-review)")
   .argument("[capability]", "optional capability (e.g. execute_code). If omitted, all detected capabilities are acknowledged.")
   .option("--reason <text>", "required justification recorded in the policy entry")
+  .option("--reason-from-stdin", "read the reason from stdin (use to avoid shell-escape issues)")
   .option("--policy <file>", "policy file to update", "wta.policy.yaml")
   .option("--workspace <dir>", "workspace to scan when resolving capabilities", ".")
   .option("--json", "print result as JSON")
   .option("--quiet", "suppress stdout")
   .action(async (component: string, capability: string | undefined, options: GlobalOptions) => {
     await handleErrors(async () => {
-      if (!options.reason || !options.reason.trim()) {
-        throw new Error("--reason is required to record why this capability is acknowledged.");
+      if (options.reasonFromStdin && options.reason) {
+        throw new Error("Pass either --reason or --reason-from-stdin, not both.");
+      }
+      const reason = options.reasonFromStdin ? await readReasonFromStdin() : options.reason;
+      if (!reason || !reason.trim()) {
+        throw new Error("A reason is required (use --reason or --reason-from-stdin) to record why this capability is acknowledged.");
       }
       const workspaceRoot = path.resolve(options.workspace ?? ".");
       const policyFile = path.resolve(workspaceRoot, options.policy ?? "wta.policy.yaml");
@@ -210,7 +216,7 @@ program
         policyFile,
         componentId: component,
         capability: capability as never,
-        reason: options.reason
+        reason
       });
       if (options.quiet) return;
       if (options.json) {
@@ -228,6 +234,45 @@ program
       if (!result.componentExists && result.added.length > 0) {
         lines.push("", `Note: component "${component}" was not found in the current scan; the entry was added anyway.`);
       }
+      process.stdout.write(`${lines.join("\n")}\n`);
+    });
+  });
+
+program
+  .command("ack-batch")
+  .description("acknowledge many components at once. Reads a JSON array of {componentId, capability?, reason?} from stdin.")
+  .option("--reason <text>", "default reason applied to items that omit their own")
+  .option("--policy <file>", "policy file to update", "wta.policy.yaml")
+  .option("--workspace <dir>", "workspace to scan when resolving capabilities", ".")
+  .option("--json", "print result as JSON")
+  .option("--quiet", "suppress stdout")
+  .action(async (options: GlobalOptions) => {
+    await handleErrors(async () => {
+      const raw = await readJsonFromStdin();
+      const items = parseAckBatchInput(raw);
+      const workspaceRoot = path.resolve(options.workspace ?? ".");
+      const policyFile = path.resolve(workspaceRoot, options.policy ?? "wta.policy.yaml");
+      const result = await ackBatchInPolicy({
+        workspaceRoot,
+        policyFile,
+        items,
+        defaultReason: options.reason
+      });
+      if (options.quiet) return;
+      if (options.json) {
+        process.stdout.write(stableJson(result));
+        return;
+      }
+      const lines = [
+        result.added.length > 0
+          ? `Added ${result.added.length} expected ${result.added.length === 1 ? "entry" : "entries"} to ${policyFile}`
+          : `No new entries added to ${policyFile}`,
+        `(${result.itemCount} item${result.itemCount === 1 ? "" : "s"} submitted, ${result.alreadyPresent.length} already in policy, ${result.skipped.length} skipped)`,
+        ""
+      ];
+      for (const entry of result.added) lines.push(`+ ${entry.componentId} · ${entry.capability}`);
+      for (const entry of result.alreadyPresent) lines.push(`= ${entry.componentId} · ${entry.capability} (already in policy)`);
+      for (const entry of result.skipped) lines.push(`! ${entry.componentId}${entry.capability ? ` · ${entry.capability}` : ""} skipped: ${entry.reason}`);
       process.stdout.write(`${lines.join("\n")}\n`);
     });
   });

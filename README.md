@@ -264,6 +264,27 @@ wta ack mcp.github --reason "Read-only GitHub MCP, approved"
 
 Without an explicit capability, `wta ack` reads the current scan and acknowledges every capability that component has. Re-running an ack is a no-op — duplicates are detected by `(component, capability)`.
 
+For agent integrations that compose the reason at runtime (and want to avoid shell-quoting headaches), pipe it on stdin instead of passing `--reason`:
+
+```bash
+echo "internal finance pipeline, sends invoices to staging webhook" \
+  | wta ack skill.invoice-review --reason-from-stdin
+```
+
+To approve many components in one call (the "approve all" intent from the chat skill), pipe a JSON array to `wta ack-batch`:
+
+```bash
+cat <<'JSON' | wta ack-batch --reason "approved during onboarding"
+[
+  { "componentId": "mcp.burp" },
+  { "componentId": "skill.invoice-review", "capability": "external_send", "reason": "specific override" },
+  { "componentId": "mcp.github" }
+]
+JSON
+```
+
+Each item may set its own `capability` and `reason`; otherwise it inherits the batch `--reason` and fans out to every capability detected for that component. Output reports added / already-present / skipped counts (`--json` returns the structured form for the agent to log).
+
 ## Chat-style summary for personal agents (Hermes / OpenClaw / Telegram bots)
 
 If your agent talks to you over chat, `report.html` is the wrong UI. Use `--chat`:
