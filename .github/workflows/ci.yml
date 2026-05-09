@@ -41,7 +41,6 @@ jobs:
           npm run scan:example
           npm run understand:example
           npm run plan:example
-          npm run probe:example
           npm run instructions:example
 
       - name: Verify npm package contents

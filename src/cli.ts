@@ -6,13 +6,11 @@ import { wellKnownClients } from "./clients/wellKnownClients.js";
 import { planWorkspace } from "./core/planWorkspace.js";
 import { ackBatchInPolicy, ackInPolicy, parseAckBatchInput, readJsonFromStdin, readReasonFromStdin } from "./core/ackPolicy.js";
 import { createPersonalAgentBaseline, diffPersonalAgentBaseline, seededPolicyFromScan, starterPolicy, writePersonalBaselineOutputs, writePersonalDiffOutputs, writePolicyContent } from "./core/personalAgentBaseline.js";
-import { buildProbePlan } from "./core/probePlan.js";
-import { buildRuntimePlan } from "./core/runtimePlan.js";
 import { scanWorkspace } from "./core/scanWorkspace.js";
-import type { AgentPlanTarget, AgentProfile, RuntimeMode, ScanResult } from "./core/types.js";
+import type { AgentPlanTarget, AgentProfile, ScanResult } from "./core/types.js";
 import { understandWorkspace } from "./core/understandWorkspace.js";
 import { diffScanFiles } from "./diff/diffEngine.js";
-import { formatAgentPlanSummary, formatCompatibilitySummary, formatDiffSummary, formatProbePlanSummary, formatRuntimePlanSummary, formatScanSummary, formatUnderstandSummary } from "./output/consoleFormatter.js";
+import { formatAgentPlanSummary, formatCompatibilitySummary, formatDiffSummary, formatScanSummary, formatUnderstandSummary } from "./output/consoleFormatter.js";
 import { renderAgentInstructions, type AgentInstructionTarget } from "./output/agentInstructions.js";
 import { renderFixPlan } from "./output/fixPlan.js";
 import { renderHtmlReport } from "./output/htmlReport.js";
@@ -33,7 +31,6 @@ interface GlobalOptions {
   forOpenclaw?: boolean;
   forHermes?: boolean;
   ui?: boolean;
-  mode?: RuntimeMode;
   profile?: AgentProfile;
   baseline?: string;
   force?: boolean;
@@ -337,40 +334,6 @@ program
   });
 
 program
-  .command("probe")
-  .argument("<workspace>", "workspace to generate a sandbox probe plan for")
-  .option("--json", "print deterministic probe plan JSON")
-  .option("--no-color", "disable color output")
-  .option("--quiet", "suppress stdout")
-  .option("--output <file>", "write probe plan JSON to a file")
-  .action(async (workspace: string, options: GlobalOptions) => {
-    await handleErrors(async () => {
-      const probePlan = await buildProbePlan(workspace);
-      if (options.output) await writeJsonFile(options.output, probePlan);
-      if (options.quiet) return;
-      process.stdout.write(options.json ? stableJson(probePlan) : formatProbePlanSummary(probePlan));
-    });
-  });
-
-program
-  .command("runtime")
-  .argument("<workspace>", "workspace to generate a runtime protection preview for")
-  .option("--mode <mode>", "runtime mode: observe, warn, approval, enforce", "observe")
-  .option("--json", "print deterministic runtime plan JSON")
-  .option("--no-color", "disable color output")
-  .option("--quiet", "suppress stdout")
-  .option("--output <file>", "write runtime plan JSON to a file")
-  .action(async (workspace: string, options: GlobalOptions) => {
-    await handleErrors(async () => {
-      const mode = runtimeMode(options.mode);
-      const runtimePlan = await buildRuntimePlan(workspace, mode);
-      if (options.output) await writeJsonFile(options.output, runtimePlan);
-      if (options.quiet) return;
-      process.stdout.write(options.json ? stableJson(runtimePlan) : formatRuntimePlanSummary(runtimePlan));
-    });
-  });
-
-program
   .command("scan")
   .argument("<workspace>", "workspace to scan")
   .option("--json", "print deterministic JSON")
@@ -507,11 +470,6 @@ function instructionTarget(options: GlobalOptions): AgentInstructionTarget {
   if (options.forOpenclaw) return "openclaw";
   if (options.forHermes) return "hermes";
   return "generic";
-}
-
-function runtimeMode(value: RuntimeMode | undefined): RuntimeMode {
-  if (value === "observe" || value === "warn" || value === "approval" || value === "enforce") return value;
-  throw new Error(`Invalid runtime mode: ${value}. Expected observe, warn, approval, or enforce.`);
 }
 
 function profileOption(value: AgentProfile | undefined): AgentProfile {

@@ -1,4 +1,4 @@
-import type { AgentPlan, DiffResult, ProbePlan, RuntimePlan, ScanResult, UnderstandResult } from "../core/types.js";
+import type { AgentPlan, DiffResult, ScanResult, UnderstandResult } from "../core/types.js";
 
 export interface FormatOptions {
   quiet?: boolean;
@@ -185,28 +185,6 @@ export function formatCompatibilitySummary(result: { knownClients: Array<{ name:
     lines.push(`  Skills: ${skillsDirs}`);
   }
   return `${lines.join("\n")}\n`;
-}
-
-export function formatProbePlanSummary(plan: ProbePlan): string {
-  return [
-    "WhatTheAgent sandbox probe plan",
-    "",
-    plan.warning,
-    "",
-    `Probes: ${plan.probes.length}`,
-    ...plan.probes.map((probe) => `- ${probe.capability}: ${probe.description}`)
-  ].join("\n") + "\n";
-}
-
-export function formatRuntimePlanSummary(plan: RuntimePlan): string {
-  return [
-    `WhatTheAgent runtime ${plan.mode} preview`,
-    "",
-    plan.warning,
-    "",
-    `Policies: ${plan.policies.length}`,
-    ...plan.policies.map((policy) => `- ${policy.action}: ${policy.control} (${policy.appliesTo.length} component${policy.appliesTo.length === 1 ? "" : "s"})`)
-  ].join("\n") + "\n";
 }
 
 function humanCapability(capability: string): string {

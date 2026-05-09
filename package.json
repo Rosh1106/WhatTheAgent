@@ -44,7 +44,6 @@
     "graph:example": "tsx src/cli.ts graph examples/risky-agent",
     "understand:example": "tsx src/cli.ts understand examples/risky-agent",
     "plan:example": "tsx src/cli.ts plan examples/risky-agent --for-codex",
-    "probe:example": "tsx src/cli.ts probe examples/risky-agent",
     "instructions:example": "tsx src/cli.ts instructions --for-claude",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

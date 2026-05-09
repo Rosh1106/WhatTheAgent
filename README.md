@@ -360,14 +360,7 @@ Policy does not hide inventory. It moves approved capabilities out of "needs att
 
 ## Static and Local First
 
-WhatTheAgent runs locally. It does not require login, upload scan data, call an API, use an LLM, execute scripts, or start MCP servers.
-
-Advanced preview commands live in the roadmap:
-
-```bash
-wta probe .
-wta runtime . --mode observe
-```
+WhatTheAgent runs locally. It does not require login, upload scan data, call an API, use an LLM, execute scripts, or start MCP servers. See [docs/ROADMAP.md#non-goals](docs/ROADMAP.md#non-goals) for the explicit list of things WhatTheAgent does not (and will not) try to do.
 
 ## Example
 
@@ -415,9 +408,7 @@ What's stable today:
 - `--chat`, `--open`, `--exclude`, `--from-scan`, `--reason-from-stdin`
 - The HTML report, SVG visual chains, and chat-summary output formats
 
-What's still preview-only:
-- `wta probe` (sandbox capability probing — emits a plan, doesn't execute)
-- `wta runtime` (runtime observability — emits a plan, doesn't enforce)
+What's explicitly **out of scope** — sandbox capability probing and runtime enforcement. See [docs/ROADMAP.md#non-goals](docs/ROADMAP.md#non-goals) for the reasoning. WhatTheAgent stays local and static; if you need a sandbox, use gVisor / nsjail / Docker; if you need runtime enforcement, use the agent runtime's own controls.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what's planned next.
 

@@ -207,9 +207,6 @@ export type AgentProfile = "workspace" | "personal-agent" | "openclaw" | "hermes
 export type CapabilityState =
   | "declared"
   | "inferred"
-  | "sandbox_confirmed"
-  | "sandbox_blocked"
-  | "not_tested"
   | "unknown";
 
 export type ControlType =
@@ -389,46 +386,6 @@ export interface AgentPlan {
   prompt: string;
   verificationCommands: string[];
   doNotDo: string[];
-}
-
-export type ProbeStatus = "not_run" | "sandbox_confirmed" | "sandbox_blocked" | "skipped";
-
-export interface SandboxProbe {
-  id: string;
-  capability: Capability;
-  status: ProbeStatus;
-  safe: boolean;
-  description: string;
-  commandPreview?: string;
-  expectedControl?: ControlType;
-}
-
-export interface ProbePlan {
-  schemaVersion: "0.1";
-  workspace: {
-    root: string;
-  };
-  mode: "plan_only";
-  probes: SandboxProbe[];
-  warning: string;
-}
-
-export type RuntimeMode = "observe" | "warn" | "approval" | "enforce";
-
-export interface RuntimePlan {
-  schemaVersion: "0.1";
-  workspace: {
-    root: string;
-  };
-  mode: RuntimeMode;
-  status: "preview_only";
-  policies: Array<{
-    id: string;
-    control: ControlType;
-    action: "observe" | "warn" | "require_approval" | "block";
-    appliesTo: string[];
-  }>;
-  warning: string;
 }
 
 export interface DiffResult {

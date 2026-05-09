@@ -13,11 +13,21 @@ release; breaking schema changes will be called out in the relevant section.
 - README mascot (`readme/mascot.svg`) and animated terminal demo (`readme/demo.svg`).
 - npm / license / Node / tests / status badges and a sharper "Why this exists" section in `README.md`.
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `RELEASE.md`, GitHub issue templates, and a pull-request template.
+- A "Non-goals" section in `docs/ROADMAP.md` that explicitly puts sandbox capability probing, runtime monitoring/enforcement, SaaS dashboards, and silent fixes out of scope.
 
 ### Changed
 
 - `readme/README.md` (docs hub), `readme/personal-agents.md`, `readme/workspace-stations.md`, `readme/agent-instructions.md`, and `docs/ROADMAP.md` brought up to date with the current command surface (`--chat`, `--open`, `--exclude`, `--from-scan`, `--reason-from-stdin`, `wta ack`, `wta ack-batch`).
-- `AGENTS.md` snapshot of the current architecture and detection-quality rules for new contributors.
+- `AGENTS.md` snapshot of the current architecture and detection-quality rules for new contributors. The "Runtime and sandbox direction" section is replaced with an explicit "What WhatTheAgent does *not* do" scope reminder.
+
+### Removed
+
+- **`wta probe` command and `src/core/probePlan.ts`.** Sandbox capability probing is now an explicit non-goal (see ROADMAP). Anyone who needs it should use a real sandbox (gVisor / nsjail / Docker-with-seccomp).
+- **`wta runtime` command and `src/core/runtimePlan.ts`.** Runtime observability / enforcement is now an explicit non-goal. Use the agent runtime's own audit logs, permission model, or a dedicated EDR.
+- The supporting `ProbePlan`, `SandboxProbe`, `ProbeStatus`, `RuntimePlan`, and `RuntimeMode` types from `src/core/types.ts`, plus the `formatProbePlanSummary` and `formatRuntimePlanSummary` console formatters.
+- Pruned `CapabilityState` to `declared | inferred | unknown` (dropped `sandbox_confirmed`, `sandbox_blocked`, `not_tested`, which only made sense alongside the removed probe command).
+- Dead `src/cli/options.ts` and `src/cli/targets.ts` (orphan scaffolding never wired into `cli.ts`).
+- The `probe:example` npm script and the `npm run probe:example` smoke step in CI.
 
 ## [0.1.0] - pre-release
 

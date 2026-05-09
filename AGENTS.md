@@ -135,9 +135,6 @@ A capability should have a state such as:
 
 - `declared`
 - `inferred`
-- `sandbox_confirmed`
-- `sandbox_blocked`
-- `not_tested`
 - `unknown`
 
 Controls should include:
@@ -200,20 +197,11 @@ Recommended graph edge types:
 - `IMPLEMENTED_BY`
 - `DEFINED_IN`
 
-## Runtime and sandbox direction
+## What WhatTheAgent does *not* do
 
-The first product wedge is pre-deploy understanding and capability/control analysis.
+WhatTheAgent is a **static, local-first** capability discovery tool. It is not a sandbox, an EDR, a runtime firewall, or a SaaS dashboard. The full reasoning lives in [docs/ROADMAP.md#non-goals](docs/ROADMAP.md#non-goals); the short version is that credible sandboxes already exist (gVisor, nsjail, Docker), agent vendors are building runtime observability themselves (Claude Code audit logs, MCP permission models, Cursor Privacy Mode), and competing on those is a losing race for a focused project.
 
-Future versions should add:
-
-1. Sandbox capability probing
-2. Runtime observe mode
-3. Runtime approval mode
-4. Runtime enforce/block mode
-
-Static scanning answers: what could this agent do?
-Sandbox probing answers: what can this agent actually do in a controlled environment?
-Runtime enforcement answers: what is this agent trying to do live, and should it be allowed?
+If a contribution starts to add code execution, network calls during scanning, MCP startup, or runtime hooks, that's a scope alarm — flag it in the PR description.
 
 ## Coding guidance
 

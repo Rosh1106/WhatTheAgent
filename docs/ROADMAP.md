@@ -14,7 +14,7 @@ It should help users understand and harden AI agent systems by answering:
 6. What fixes should be made?
 7. What instructions should be sent to Codex, Claude, or another coding agent?
 
-The product should start local-first and developer-first, then evolve toward richer UI, sandbox capability probing, runtime monitoring, and agent supply-chain protection.
+The product is local-first and developer-first by design. It does not run code, hook into agent runtimes, or upload to a cloud — see [Non-goals](#non-goals) at the bottom for the explicit list of things we *don't* build.
 
 ## Product positioning
 
@@ -328,27 +328,11 @@ Examples of agent implementation tasks:
 - Add UI graph interactions
 - Add tests
 
-## Runtime and sandbox roadmap
+## What WhatTheAgent answers
 
-The product should eventually support:
+> What could this agent do, given the skills, MCP servers, scripts, and configs sitting in this workspace?
 
-1. Static capability understanding
-2. Sandbox capability probing
-3. Runtime observe mode
-4. Runtime approval mode
-5. Runtime enforce/block mode
-
-Static scan answers:
-
-> What could this agent do?
-
-Sandbox probing answers:
-
-> What can this agent actually do in a controlled environment?
-
-Runtime enforcement answers:
-
-> What is this agent trying to do live, and should it be allowed?
+That's the static-analysis question. *Sandbox probing* ("what can it actually do in a controlled environment?") and *runtime enforcement* ("what is it trying to do live?") are different questions that need different tools — see [Non-goals](#non-goals).
 
 ## Milestones
 
@@ -374,20 +358,25 @@ Personal-agent flow:
 - `wta understand . --chat` and `wta diff-baseline . --chat` produce a phone-readable markdown summary plus a structured actions JSON for chat-driving agents
 - A ready-made Hermes / OpenClaw skill at `skills/whattheagent-safety-check.skill.md`
 
-### Milestone 5 — preview
-
-`wta probe` emits a sandbox probe plan but does not execute anything. Future versions will add controlled probes for file read/write, shell execution, network access, fake secrets/canary tokens, external send, package install, and delegation — each with explicit user consent.
-
-### Milestone 6 — preview
-
-`wta runtime` emits a runtime policy preview in observe / warn / approval / enforce modes. Future versions will hook into agent runtimes for live observability and enforcement.
-
 ### Next focus
 
 - Tighten control detection to cover all 14 control types from `AGENTS.md`.
 - Cap `fix-plan.md` and `understand.json` size on large workspaces (currently grow linearly with findings).
 - Ship a "known-good tools" catalog (Burp / GitHub MCP / Stripe MCP / Linear / Slack / etc.) so the report presents them as *powerful-but-recognised*, distinct from unknown scripts.
 - Improve component IDs from full-path slugs to `<basename>-<6char-hash>` for readability in `fix-plan.md` and chat output.
+
+## Non-goals
+
+WhatTheAgent is a **static, local-first** capability discovery tool. The following are explicitly out of scope:
+
+- **Sandbox capability probing.** Earlier drafts of this roadmap proposed a `wta probe` command that would actually execute capabilities in a sandbox to confirm them. We dropped it. Building a credible sandbox (containers, canary credentials, untrusted-code execution safety) is a multi-month security-critical project, and credible sandboxes already exist — gVisor, nsjail, Docker with seccomp, and the agent runtimes themselves. WhatTheAgent should *compose* with them, not reimplement them.
+- **Runtime monitoring or enforcement.** Earlier drafts proposed a `wta runtime` command that would hook into agent runtimes in observe / warn / approval / enforce modes. We dropped that too. Agent vendors (Claude Code, Cursor, MCP) are adding runtime observability and permission models themselves; competing with them from outside the runtime is a losing race. If you need runtime enforcement, use the agent's own controls or a dedicated EDR.
+- **A SaaS dashboard.** Local-first is the product. No cloud account, no upload, no login.
+- **A pure-MCP-server product.** MCP is an input adapter, not the product surface.
+- **Silent fixes.** WhatTheAgent should never apply risky changes silently; everything goes through the user-approves / agent-implements / WhatTheAgent-verifies loop.
+- **Scanning untrusted remote URLs.** Scope is local files in the workspace you point it at.
+
+The job we are doing is making *capability combinations visible* and *intentional ones cheap to acknowledge*. That's a focused, defensible product. Anything that makes the tool simultaneously try to be a sandbox, an EDR, or a SaaS dashboard dilutes that focus.
 
 ## Non-goals for now
 
