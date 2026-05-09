@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { CapabilityGraph, ScanResult, UnderstandResult } from "../core/types.js";
+import type { CapabilityGraph, PersonalAgentBaselineDiff, ScanResult, UnderstandResult } from "../core/types.js";
+import { buildDiffChatSummary, buildUnderstandChatSummary, type ChatSummary } from "./chatSummary.js";
 import { renderFixPlan } from "./fixPlan.js";
 import { renderHtmlReport } from "./htmlReport.js";
 import { renderMarkdownReport } from "./markdownReport.js";
@@ -82,4 +83,22 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
 
 function stripJsonExtension(filePath: string): string {
   return filePath.endsWith(".json") ? filePath.slice(0, -".json".length) : filePath;
+}
+
+export async function writeChatSummary(outputDir: string, summary: ChatSummary): Promise<string[]> {
+  const resolvedDir = path.resolve(outputDir);
+  await fs.mkdir(resolvedDir, { recursive: true });
+  const messageFile = path.join(resolvedDir, "chat-message.md");
+  const actionsFile = path.join(resolvedDir, "chat-actions.json");
+  await fs.writeFile(messageFile, `${summary.message}\n`, "utf8");
+  await writeJsonFile(actionsFile, summary);
+  return [messageFile, actionsFile];
+}
+
+export function buildChatSummaryForUnderstand(result: UnderstandResult): ChatSummary {
+  return buildUnderstandChatSummary(result);
+}
+
+export function buildChatSummaryForDiff(diff: PersonalAgentBaselineDiff): ChatSummary {
+  return buildDiffChatSummary(diff);
 }
