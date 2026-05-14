@@ -83,30 +83,31 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("No urgent capability risks");
   });
 
-  it("shows a risk-chain card with the chain flow when chains exist", () => {
+  it("shows a risk-chain entry with the chain flow when chains exist", () => {
     const html = renderHtmlReport(baseResult({ riskChains: [exfilChain] }));
     expect(html).toContain("Data Exfiltration");
     expect(html).toContain("credential_access");
     expect(html).toContain("external_send");
-    expect(html).toContain("class=\"chain-flow\"");
-    expect(html).toContain("class=\"chain-arrow\"");
+    expect(html).toContain('class="entry-flow"');
+    expect(html).toContain('class="arrow"');
   });
 
-  it("embeds the visual chains SVG inline at the top of the risk section", () => {
+  it("does not embed the visual chains SVG inline (editorial restraint; the SVG file remains at visual-chains.svg)", () => {
     const html = renderHtmlReport(baseResult({ riskChains: [exfilChain] }));
-    expect(html).toContain("class=\"visual-wrap\"");
-    expect(html).toContain("<svg");
+    expect(html).not.toContain("<svg");
+    expect(html).not.toContain("visual-wrap");
   });
 
   it("does not render the risk section when no chains exist", () => {
     const html = renderHtmlReport(baseResult());
-    expect(html).not.toContain("id=\"risk\"");
+    expect(html).not.toContain('id="risk"');
   });
 
-  it("renders meaningful control gaps as cards in needs-attention", () => {
+  it("renders meaningful control gaps under the needs-attention section", () => {
     const html = renderHtmlReport(baseResult({ controlGaps: [gap] }));
-    expect(html).toContain("Human Approval");
-    expect(html).toContain("gap-card");
+    expect(html).toContain('id="attention"');
+    expect(html).toContain("Missing · Human Approval");
+    expect(html).toContain("Add a human approval gate before external sends");
   });
 
   it("renders the expected section only when observations are present", () => {
@@ -155,18 +156,22 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("&lt;img");
   });
 
-  it("includes the four-pill status strip with correct counts", () => {
+  it("includes the four-item summary block with correct counts in the masthead", () => {
     const html = renderHtmlReport(baseResult({
       riskChains: [exfilChain],
       controlGaps: [gap]
     }));
-    expect(html).toContain("class=\"pill pill-crit\"");
-    expect(html).toContain("class=\"pill pill-warn\"");
-    expect(html).toContain("class=\"pill pill-ok\"");
-    expect(html).toContain("class=\"pill pill-info\"");
+    expect(html).toContain('class="summary"');
+    expect(html).toContain("Risk chains");
+    expect(html).toContain("Needs attention");
+    expect(html).toContain("Acknowledged");
+    expect(html).toContain("Inventory findings");
+    // No coloured pill chrome; counts are plain numbers in <dd>.
+    expect(html).not.toContain("pill-crit");
+    expect(html).not.toContain("pill-warn");
   });
 
-  it("leads chain cards with the component label and type, demoting the slug ID", () => {
+  it("leads each entry with the component label and type, demoting the slug ID", () => {
     const result = baseResult({
       riskChains: [exfilChain],
       scan: {
@@ -180,9 +185,9 @@ describe("renderHtmlReport", () => {
       }
     });
     const html = renderHtmlReport(result);
-    expect(html).toContain("comp-label");
+    expect(html).toContain('class="entry-label"');
     expect(html).toContain("invoice-review");
-    expect(html).toContain("comp-type");
+    expect(html).toContain('class="entry-type"');
     expect(html).toContain(">Skill<");
     expect(html).toContain("skills/invoice-review/SKILL.md");
   });
@@ -192,9 +197,23 @@ describe("renderHtmlReport", () => {
     expect(html).toContain("(unknown component)");
   });
 
-  it("supports light and dark mode via prefers-color-scheme", () => {
+  it("is light-mode only — no prefers-color-scheme:dark block, declares color-scheme:light", () => {
     const html = renderHtmlReport(baseResult());
-    expect(html).toContain("@media (prefers-color-scheme: dark)");
+    expect(html).not.toContain("@media (prefers-color-scheme: dark)");
+    expect(html).toContain("color-scheme: light");
+  });
+
+  it("uses numbered editorial section headers (01, 02, ...) instead of icon/coloured pills", () => {
+    const html = renderHtmlReport(baseResult({ riskChains: [exfilChain], controlGaps: [gap] }));
+    expect(html).toContain('class="section-number"');
+    expect(html).toContain(">01<");
+    expect(html).toContain('class="section-title"');
+  });
+
+  it("does not import the Inter typeface (impeccable.style flags Inter-everywhere as an anti-pattern)", () => {
+    const html = renderHtmlReport(baseResult());
+    expect(html).not.toContain("Inter");
+    expect(html).not.toContain("fonts.googleapis.com");
   });
 
   it("is deterministic: same input produces same output", () => {
