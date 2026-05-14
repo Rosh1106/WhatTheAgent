@@ -1,6 +1,6 @@
 {
   "name": "whattheagent",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Local-first capability discovery and governance CLI for AI agent workspaces.",
   "type": "module",
   "license": "MIT",
