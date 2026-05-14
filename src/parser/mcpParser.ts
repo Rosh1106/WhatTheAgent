@@ -1,4 +1,3 @@
-import path from "node:path";
 import { parse as parseJsonc } from "jsonc-parser";
 import type { Capability, Evidence, Finding, McpRiskFlag, McpServerComponent, WellKnownClient } from "../core/types.js";
 import { classifyCapability } from "../risk/classifier.js";
