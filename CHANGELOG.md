@@ -8,6 +8,20 @@ release; breaking schema changes will be called out in the relevant section.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-14
+
+### Security
+
+- **Fix `js/file-system-race` (CWE-367) in `readTextFileForScan`.** GitHub CodeQL raised the finding against `src/utils/safeRead.ts:29`: the previous implementation called `fs.stat(filePath)` and then `fs.readFile(filePath)`, leaving a small TOCTOU window in which an attacker who could swap the file at `filePath` between the two operations could bypass the 1 MB size cap and have the scanner read an arbitrary larger file. Practical exploitability in WhatTheAgent's threat model is limited (an attacker who can swap files in the scan tree already controls their content directly, and the symlink-escape defence shipped in 0.2.1 blocks the most obvious cross-tree path), but pinning the inode is the correct fix.
+
+  The function now opens the file once with `fs.open()`, calls `handle.stat()` and `handle.readFile()` on the same descriptor, and closes the handle in a `finally`. The descriptor refers to a fixed inode, so even a successful path swap leaves us reading the file we originally checked.
+
+  A new regression test in `tests/utils/safeRead.test.ts` exercises a race between the read and a concurrent unlink-and-replace-with-a-10 MB-file, asserting that the output is always either the original content or a `skipped` marker (never the 10 MB blob). Plus four other tests covering the normal small-file, oversize, missing-file, and intra-workspace-symlink paths.
+
+### Changed
+
+- Removed an unused `node:path` import in `src/parser/mcpParser.ts` (closes CodeQL `js/unused-local-variable`).
+
 ## [0.3.0] - 2026-05-14
 
 The "better detection + slot into any CI" release. Region-aware scanning eliminates the false-positive class that dominated home-dir dogfooding, SARIF output unlocks GitHub Code Scanning and every commercial SAST aggregator, and `--fail-on` is the universal CI gate.
@@ -114,7 +128,8 @@ The first publishable cut of WhatTheAgent. Highlights:
 - Component IDs are slugs of full paths and remain unreadable for deeply nested skills; switching to `<basename>-<6char-hash>` is on the roadmap.
 - `wta probe` and `wta runtime` are plan-only.
 
-[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.1.0...v0.2.0
