@@ -38,6 +38,64 @@ jobs:
           path: .wta/
 ```
 
+## GitHub Code Scanning (SARIF)
+
+WhatTheAgent emits SARIF 2.1.0 so findings show up in the Security tab of any public repo and in any commercial SARIF aggregator (GitLab, Snyk Code, Sonar, etc.).
+
+```yaml
+name: WhatTheAgent
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write   # required to upload SARIF to Code Scanning
+
+jobs:
+  whattheagent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install -g whattheagent
+
+      # Run the scan and gate the build on critical findings.
+      - run: wta understand . --output .wta --fail-on critical
+
+      # Upload SARIF to GitHub Code Scanning so findings appear under Security → Code scanning.
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()       # upload even when --fail-on triggered exit 1
+        with:
+          sarif_file: .wta/results.sarif
+          category: whattheagent
+
+      # Optional: keep the full report directory as a workflow artifact.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: whattheagent-report
+          path: .wta/
+```
+
+`wta understand . --output .wta` always writes `.wta/results.sarif` alongside the other outputs. If you'd rather pipe SARIF directly without using the output directory, use `wta understand . --sarif > results.sarif` — the SARIF goes to stdout; the gating verdict goes to stderr.
+
+### `--fail-on` thresholds
+
+| Flag value | Fails CI when there is at least one finding of risk… |
+|---|---|
+| `none` *(default)* | Never (just reports) |
+| `low` / `note` | low or higher |
+| `medium` / `warning` | medium or higher |
+| `high` / `error` | high or higher |
+| `critical` | critical only |
+
+The verdict line prints to stderr (e.g. `WhatTheAgent: failing CI — 1 risk chain at or above 'critical'.`), so it appears in CI logs without polluting your SARIF/JSON stdout pipeline.
+
 ## Composite Action
 
 This repository also includes `action.yml` so users can run WhatTheAgent as a GitHub Action after the repository is public:

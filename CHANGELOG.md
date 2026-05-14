@@ -8,6 +8,24 @@ release; breaking schema changes will be called out in the relevant section.
 
 ## [Unreleased]
 
+### Added
+
+- **Region-aware scanning** (`src/parser/regions.ts`). Before pattern matching, files are split into typed regions so detection only fires on the right kind of text:
+  - For `SKILL.md` and other markdown: fenced code blocks become `code` regions (run script-shape patterns), prose paragraphs become `prose` regions (run skill-instruction patterns), inline backtick spans and HTML comments are stripped entirely.
+  - For Python: `#` line comments and triple-quoted docstrings are stripped, including trailing comments after a code statement; `#` inside string literals is preserved.
+  - For JavaScript / TypeScript: `//` line comments and `/* */` block comments are stripped; `//` inside string, template, and regex literals is preserved.
+  - For Bash: `#` comments are stripped at word boundaries; the shebang stays as code.
+- 27 new chunker unit tests in `tests/parser/regions.test.ts` and 10 end-to-end FP-suppression integration tests in `tests/integration/regionAwareScanning.test.ts` covering each region kind plus chain-detection sanity.
+- **SARIF 2.1.0 output** (`src/output/sarifReport.ts`). `wta understand . --output .wta` now always writes `.wta/results.sarif` alongside the other outputs; `wta understand . --sarif` emits SARIF to stdout for direct piping into `github/codeql-action/upload-sarif`. Risk chains and meaningful control gaps are mapped to SARIF rules + results with severity-correct `level` (critical/high → error, medium → warning, low → note), stable partialFingerprints for cross-run dedup, and physical locations from finding evidence.
+- **`--fail-on <level>` CI gate** (`src/core/failOn.ts`). Threshold values: `none` (default), `low`, `medium`, `high`, `critical`. SARIF aliases `note` / `warning` / `error` are accepted too. When findings ≥ threshold are present, `wta understand` sets exit code 1; the verdict prints to stderr so it doesn't pollute SARIF/JSON stdout pipelines.
+- 14 SARIF tests + 13 fail-on tests covering shape, schema, level mapping, rule dedup, fingerprint stability, output determinism, threshold parsing (case-insensitive, aliases, invalid input), and inclusive-threshold semantics. Total 240 tests passing.
+
+### Changed
+
+- The skill scanner (`src/scanner/skillScanner.ts`) now runs `skillInstructionPatterns` only against prose regions and `scriptPatterns` only against fenced code blocks — eliminating a large class of false positives where prose in a SKILL.md mentioned a script-shape construct (e.g. *"do not use `os.system`"*, *"deprecated `requests.post`"*).
+- The script scanner (`src/scanner/scriptScanner.ts`) now strips comments before pattern matching. Comments in Python / JS / TS / Bash no longer trigger findings about the constructs they describe.
+- `writeUnderstandOutputs` now also writes `results.sarif` to the output directory. Existing callers get this for free; the file list in the returned tuple grows from 6 entries to 7.
+
 ## [0.2.1] - 2026-05-10
 
 ### Security

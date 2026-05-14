@@ -208,6 +208,24 @@ Agent-friendly flags:
 wta understand . --json --no-color --quiet --output .wta
 ```
 
+For CI gating and GitHub Code Scanning:
+
+```bash
+# SARIF 2.1.0 to stdout — pipe directly to github/codeql-action/upload-sarif
+wta understand . --sarif > results.sarif
+
+# Or rely on the side-effect file (always written when --output is set)
+wta understand . --output .wta            # writes .wta/results.sarif
+# upload .wta/results.sarif from there.
+
+# Exit non-zero so CI fails on findings at or above the chosen severity
+wta understand . --fail-on critical       # only fail on critical chains/gaps
+wta understand . --fail-on high           # high or critical
+wta understand . --fail-on medium         # medium, high, or critical
+```
+
+`--fail-on` accepts `none` (default), `low`, `medium`, `high`, `critical`. SARIF-style aliases (`note`, `warning`, `error`) are accepted too. The verdict prints to stderr so it never pollutes a `--sarif` or `--json` stdout pipeline.
+
 Skip extra paths beyond the built-in defaults:
 
 ```bash
