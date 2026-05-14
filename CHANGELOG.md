@@ -8,6 +8,10 @@ release; breaking schema changes will be called out in the relevant section.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-14
+
+The "better detection + slot into any CI" release. Region-aware scanning eliminates the false-positive class that dominated home-dir dogfooding, SARIF output unlocks GitHub Code Scanning and every commercial SAST aggregator, and `--fail-on` is the universal CI gate.
+
 ### Added
 
 - **Region-aware scanning** (`src/parser/regions.ts`). Before pattern matching, files are split into typed regions so detection only fires on the right kind of text:
@@ -110,7 +114,8 @@ The first publishable cut of WhatTheAgent. Highlights:
 - Component IDs are slugs of full paths and remain unreadable for deeply nested skills; switching to `<basename>-<6char-hash>` is on the roadmap.
 - `wta probe` and `wta runtime` are plan-only.
 
-[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Rosh1106/WhatTheAgent/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Rosh1106/WhatTheAgent/releases/tag/v0.1.0
