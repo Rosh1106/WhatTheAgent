@@ -1,10 +1,11 @@
 import path from "node:path";
 import type { Finding, SkillComponent } from "../core/types.js";
+import { chunkMarkdown, type Region } from "../parser/regions.js";
 import { parseSkill } from "../parser/skillParser.js";
 import { classifyCapability } from "../risk/classifier.js";
 import { findFiles } from "../utils/fileWalker.js";
 import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
-import { scriptFilePattern, skillInstructionPatterns } from "../utils/patterns.js";
+import { scriptFilePattern, scriptPatterns, skillInstructionPatterns, type CapabilityPattern } from "../utils/patterns.js";
 import { scanScript, type ScriptScanResult } from "./scriptScanner.js";
 
 export interface SkillScanResult {
@@ -39,28 +40,60 @@ export async function scanSkills(root: string, extraIgnore: string[] = []): Prom
 function scanSkillInstructions(root: string, skillFile: string, componentId: string, body: string, bodyStartLine: number): Finding[] {
   const relPath = relativePath(root, skillFile);
   const findings: Finding[] = [];
-  const lines = body.split(/\r?\n/);
+  const regions = chunkMarkdown(body);
 
-  lines.forEach((line, index) => {
-    const lineNumber = bodyStartLine + index;
-    for (const candidate of skillInstructionPatterns) {
-      if (!candidate.regex.test(line)) continue;
+  for (const region of regions) {
+    const patterns = patternsForRegion(region);
+    if (patterns.length === 0) continue;
+    scanRegion(region, bodyStartLine, patterns).forEach((match) => {
       findings.push({
-        id: stableId("finding", `${componentId}-${candidate.capability}-${lineNumber}-${candidate.pattern}`),
+        id: stableId("finding", `${componentId}-${match.capability}-${match.line}-${match.pattern}`),
         componentId,
-        capability: candidate.capability,
-        risk: classifyCapability(candidate.capability),
+        capability: match.capability,
+        risk: classifyCapability(match.capability),
         evidence: {
           file: relPath,
-          line: lineNumber,
-          snippet: compactSnippet(line),
-          pattern: candidate.pattern
+          line: match.line,
+          snippet: compactSnippet(match.text),
+          pattern: match.pattern
         }
       });
-    }
-  });
+    });
+  }
 
   return findings;
+}
+
+function patternsForRegion(region: Region): CapabilityPattern[] {
+  if (region.kind === "prose") return skillInstructionPatterns;
+  if (region.kind === "code") return scriptPatterns;
+  return []; // skip comments, strings, inline_code
+}
+
+interface RegionMatch {
+  capability: CapabilityPattern["capability"];
+  pattern: string;
+  line: number;
+  text: string;
+}
+
+function scanRegion(region: Region, bodyStartLine: number, patterns: CapabilityPattern[]): RegionMatch[] {
+  const matches: RegionMatch[] = [];
+  const lines = region.text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const lineNumber = bodyStartLine + (region.startLine - 1) + i;
+    for (const candidate of patterns) {
+      if (!candidate.regex.test(line)) continue;
+      matches.push({
+        capability: candidate.capability,
+        pattern: candidate.pattern,
+        line: lineNumber,
+        text: line
+      });
+    }
+  }
+  return matches;
 }
 
 export function skillDirectory(skill: SkillComponent): string {

@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { Component, Finding } from "../core/types.js";
+import { chunkScript, detectScriptLanguage } from "../parser/regions.js";
 import { classifyCapability } from "../risk/classifier.js";
 import { compactSnippet, relativePath, stableId } from "../utils/normalize.js";
 import { scriptPatterns } from "../utils/patterns.js";
@@ -47,25 +48,31 @@ export async function scanScript(root: string, scriptPath: string, parentId?: st
 
   const content = safeRead.content ?? "";
   const findings: Finding[] = [];
-  const lines = content.split(/\r?\n/);
+  const regions = chunkScript(content, detectScriptLanguage(scriptPath));
 
-  lines.forEach((line, index) => {
-    for (const candidate of scriptPatterns) {
-      if (!candidate.regex.test(line)) continue;
-      findings.push({
-        id: stableId("finding", `${componentId}-${candidate.capability}-${index + 1}-${candidate.pattern}`),
-        componentId,
-        capability: candidate.capability,
-        risk: classifyCapability(candidate.capability),
-        evidence: {
-          file: relPath,
-          line: index + 1,
-          snippet: compactSnippet(line),
-          pattern: candidate.pattern
-        }
-      });
+  for (const region of regions) {
+    if (region.kind !== "code") continue;
+    const lines = region.text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i] ?? "";
+      const lineNumber = region.startLine + i;
+      for (const candidate of scriptPatterns) {
+        if (!candidate.regex.test(line)) continue;
+        findings.push({
+          id: stableId("finding", `${componentId}-${candidate.capability}-${lineNumber}-${candidate.pattern}`),
+          componentId,
+          capability: candidate.capability,
+          risk: classifyCapability(candidate.capability),
+          evidence: {
+            file: relPath,
+            line: lineNumber,
+            snippet: compactSnippet(line),
+            pattern: candidate.pattern
+          }
+        });
+      }
     }
-  });
+  }
 
   return {
     component,

@@ -5,7 +5,10 @@ import { buildDiffChatSummary, buildUnderstandChatSummary, type ChatSummary } fr
 import { renderFixPlan } from "./fixPlan.js";
 import { renderHtmlReport } from "./htmlReport.js";
 import { renderMarkdownReport } from "./markdownReport.js";
+import { renderSarifReport } from "./sarifReport.js";
 import { renderVisualChainsSvg } from "./visualChainsSvg.js";
+
+const WTA_TOOL_VERSION = "0.2.1";
 
 export function stableJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
@@ -37,10 +40,12 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
   const htmlFile = path.join(resolvedDir, "report.html");
   const visualChainsFile = path.join(resolvedDir, "visual-chains.svg");
   const agentContextFile = path.join(resolvedDir, "agent-context.json");
+  const sarifFile = path.join(resolvedDir, "results.sarif");
 
   await fs.mkdir(resolvedDir, { recursive: true });
   await writeJsonFile(understandFile, result);
   await writeJsonFile(graphFile, result.graph satisfies CapabilityGraph);
+  await writeJsonFile(sarifFile, renderSarifReport(result, WTA_TOOL_VERSION));
   await writeJsonFile(agentContextFile, {
     schemaVersion: result.schemaVersion,
     goal: "Help a coding agent make safe, reviewable changes that reduce meaningful agent capability/control gaps.",
@@ -78,7 +83,11 @@ export async function writeUnderstandOutputs(outputDir: string, result: Understa
   await fs.writeFile(htmlFile, renderHtmlReport(result), "utf8");
   await fs.writeFile(visualChainsFile, renderVisualChainsSvg(result), "utf8");
 
-  return [understandFile, graphFile, fixPlanFile, htmlFile, visualChainsFile, agentContextFile];
+  return [understandFile, graphFile, fixPlanFile, htmlFile, visualChainsFile, agentContextFile, sarifFile];
+}
+
+export function buildSarifReportForUnderstand(result: UnderstandResult): unknown {
+  return renderSarifReport(result, WTA_TOOL_VERSION);
 }
 
 function stripJsonExtension(filePath: string): string {

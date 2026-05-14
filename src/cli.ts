@@ -14,7 +14,8 @@ import { formatAgentPlanSummary, formatCompatibilitySummary, formatDiffSummary, 
 import { renderAgentInstructions, type AgentInstructionTarget } from "./output/agentInstructions.js";
 import { renderFixPlan } from "./output/fixPlan.js";
 import { renderHtmlReport } from "./output/htmlReport.js";
-import { buildChatSummaryForDiff, buildChatSummaryForUnderstand, stableJson, writeChatSummary, writeJsonFile, writeScanOutputs, writeUnderstandOutputs } from "./output/jsonWriter.js";
+import { buildChatSummaryForDiff, buildChatSummaryForUnderstand, buildSarifReportForUnderstand, stableJson, writeChatSummary, writeJsonFile, writeScanOutputs, writeUnderstandOutputs } from "./output/jsonWriter.js";
+import { evaluateFailOn, parseFailOnThreshold } from "./core/failOn.js";
 import { renderMarkdownReport } from "./output/markdownReport.js";
 import { formatPersonalBaselineDiffSummary, formatPersonalBaselineSummary } from "./output/personalAgentFormatter.js";
 
@@ -42,6 +43,8 @@ interface GlobalOptions {
   policy?: string;
   workspace?: string;
   chat?: boolean;
+  sarif?: boolean;
+  failOn?: string;
 }
 
 function collectExclude(value: string, previous: string[] = []): string[] {
@@ -71,9 +74,12 @@ program
   .option("--exclude <pattern>", "extra glob pattern to ignore (repeatable, comma-separated)", collectExclude, [])
   .option("--open", "open the rendered HTML report in the default browser")
   .option("--chat", "emit a phone-readable chat summary plus an actions JSON for personal-agent integrations")
+  .option("--sarif", "emit SARIF 2.1.0 to stdout (for GitHub Code Scanning and other SARIF consumers)")
+  .option("--fail-on <level>", "exit non-zero if findings >= level (none|low|medium|high|critical). Default: none.", "none")
   .action(async (workspace: string, options: GlobalOptions) => {
     await handleErrors(async () => {
       if (options.allowMcpExec) printMcpExecReserved(options);
+      const failOnThreshold = parseFailOnThreshold(options.failOn);
       const result = await understandWorkspace(workspace, { allowMcpExec: options.allowMcpExec, profile: profileOption(options.profile), excludePatterns: options.exclude });
       const outputDir = options.output ? path.resolve(options.output) : path.resolve(workspace, ".wta");
       const filesWritten = await writeUnderstandOutputs(outputDir, result);
@@ -83,28 +89,45 @@ program
         filesWritten.push(...chatFiles);
       }
       if (options.open) await openInBrowser(path.join(outputDir, "report.html"));
-      if (options.quiet) return;
+      const failOn = evaluateFailOn(result, failOnThreshold);
+      const writeStdout = (text: string): void => { if (!options.quiet) process.stdout.write(text); };
+
+      if (options.sarif) {
+        writeStdout(stableJson(buildSarifReportForUnderstand(result)));
+        applyFailOn(failOn);
+        return;
+      }
+      if (options.quiet) {
+        applyFailOn(failOn);
+        return;
+      }
       if (options.ui) {
-        process.stdout.write(`WhatTheAgent UI bundle written\n\n- ${path.join(outputDir, "report.html")}\n`);
+        writeStdout(`WhatTheAgent UI bundle written\n\n- ${path.join(outputDir, "report.html")}\n`);
+        applyFailOn(failOn);
         return;
       }
       if (chatSummary && !options.json && !options.html && !options.forAgent) {
-        process.stdout.write(`${chatSummary.message}\n`);
+        writeStdout(`${chatSummary.message}\n`);
+        applyFailOn(failOn);
         return;
       }
       if (options.json) {
-        process.stdout.write(stableJson(chatSummary ?? result));
+        writeStdout(stableJson(chatSummary ?? result));
+        applyFailOn(failOn);
         return;
       }
       if (options.html) {
-        process.stdout.write(renderHtmlReport(result));
+        writeStdout(renderHtmlReport(result));
+        applyFailOn(failOn);
         return;
       }
       if (options.forAgent) {
-        process.stdout.write(renderFixPlan(result));
+        writeStdout(renderFixPlan(result));
+        applyFailOn(failOn);
         return;
       }
-      process.stdout.write(formatUnderstandSummary(result, { filesWritten }));
+      writeStdout(formatUnderstandSummary(result, { filesWritten }));
+      applyFailOn(failOn);
     });
   });
 
@@ -455,6 +478,15 @@ async function openInBrowser(filePath: string): Promise<void> {
     child.unref();
   } catch {
     process.stderr.write(`Could not open ${filePath} automatically.\n`);
+  }
+}
+
+function applyFailOn(decision: { shouldFail: boolean; message: string }): void {
+  // Always write the verdict to stderr so it doesn't pollute --json / --sarif
+  // stdout pipelines, but is still visible in CI logs.
+  process.stderr.write(`${decision.message}\n`);
+  if (decision.shouldFail) {
+    process.exitCode = 1;
   }
 }
 
