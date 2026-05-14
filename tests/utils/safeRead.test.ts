@@ -48,40 +48,48 @@ describe("readTextFileForScan", () => {
     expect(result.content).toBe("intra-link content");
   });
 
-  it("CWE-367 defence: a path swap between size check and read does not let us read different bytes", async () => {
+  it("CWE-367 defence: a path swap after open does not let us read different bytes from the same call", async () => {
     // Regression for the js/file-system-race finding CodeQL raised on
     // safeRead.ts:29. The previous implementation stat-ed the path, then
     // read the path again. An attacker who could swap the inode between
     // the stat and the read could bypass the size cap. The fixed
     // implementation opens once and uses the descriptor for both ops, so
     // even a successful swap leaves us reading from the original inode.
+    //
+    // We start the read first, then schedule the swap on a later tick
+    // so the read's fs.open() always wins the race for the original
+    // inode. The swap then races against the descriptor-bound stat+read;
+    // pinning the inode means the read still returns the original bytes.
+    // (Without the sequencing the test flakes into ENOENT on fast CI
+    // runners, which is orthogonal to the descriptor-pinning claim.)
     const file = path.join(workdir, "swap.md");
     await fs.writeFile(file, "original content");
 
-    // Race the read against an unlink + replace with a much larger file.
-    // Without descriptor pinning, the read would either bypass the size
-    // cap or return the wrong content; with the fix, it returns the
-    // original file's bytes deterministically.
+    const readPromise = readTextFileForScan(file, 1_000_000);
+
     const swap = (async (): Promise<void> => {
+      // Yield a couple of microtasks so the in-flight fs.open() inside
+      // readTextFileForScan has its descriptor before we touch the path.
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      await new Promise<void>((resolve) => setImmediate(resolve));
       for (let i = 0; i < 50; i += 1) {
         try {
           await fs.unlink(file);
           await fs.writeFile(file, "x".repeat(10_000_000));
           return;
         } catch {
-          // path may briefly not exist while readTextFileForScan opens it;
-          // keep trying.
+          // path may briefly not exist; keep trying. The point is to
+          // change the underlying inode at the path.
         }
       }
     })();
 
-    const result = await readTextFileForScan(file, 1_000_000);
-    await swap;
+    const [result] = await Promise.all([readPromise, swap]);
 
-    // Either the read happened before the swap (content === original) or
-    // after the open but the descriptor still pointed at the old inode
-    // (content === original). The unacceptable outcome would be
-    // content === a 10 MB blob; the size cap was 1 MB.
+    // The unacceptable outcome would be content === the 10 MB blob; the
+    // size cap was 1 MB. The fixed implementation pins the inode so we
+    // either see the original content or a 'skipped' marker for the
+    // original size — never the swapped-in larger payload.
     if (result.skipped) {
       expect(result.skipped.sizeBytes).toBe("original content".length);
     } else {
